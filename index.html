@@ -169,8 +169,8 @@ canvas#chart{width:100%;height:160px;display:block}
     <div class="srow">
       <div class="slbl">平均足の時間足</div>
       <select class="sinp" id="haTF" onchange="onHaTFChange()">
-        <option value="1">1分足</option>
-        <option value="5" selected>5分足</option>
+        <option value="1" selected>1分足</option>
+        <option value="5">5分足</option>
         <option value="15">15分足</option>
         <option value="60">1時間足</option>
         <option value="240">4時間足</option>
@@ -219,11 +219,11 @@ var candleMap   = {1:[],5:[],15:[],60:[],240:[]};
 var haMap       = {1:[],5:[],15:[],60:[],240:[]};
 
 var chartTF = 5;   // chart display TF
-var haTF    = 5;   // HA signal TF
+var haTF    = 1;   // HA signal TF
 
 var CIRC = 101;    // 2*pi*16 ≈ 101
 
-var KANA_DEC = ['ぜろ','いち','にい','さん','よん','ごー','ろく','なな','はち','きゅう'];
+var KANA_DEC = ['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
 
 // ==============================
 // SPEECH
@@ -275,14 +275,13 @@ function intToJapanese(n) {
   var h = Math.floor(n/100);
   var t = Math.floor((n%100)/10);
   var o = n%10;
-  var tens = ['','','にい','さん','よん','ご','ろく','なな','はち','きゅう'];
-  var ones = ['','いち','にい','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var huns = ['','ひゃく','にぃひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'];
+  var tens = ['','じゅう','にぃじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
+  var ones = ['','いち','にぃ','さん','よん','ご','ろく','なな','はち','きゅう'];
   var r = '';
-  if (h===1)     { r+='ひゃく'; }
-  else if (h===2){ r+='にひゃく'; }
-  if (t===1)     { r+='じゅう'; }
-  else if (t>1)  { r+=tens[t]+'じゅう'; }
-  if (o>0)       { r+=ones[o]; }
+  if (h > 0) { r += huns[h]; }
+  if (t > 0) { r += tens[t]; }
+  if (o > 0) { r += ones[o]; }
   return r;
 }
 function rateText(rate) {
@@ -458,11 +457,20 @@ function calcHA(tf) {
 
 function getHaSignal(tf) {
   var ha = haMap[tf];
-  if (!ha || ha.length < 1) { return null; }
-  var last = ha[ha.length-1];
-  if (last.c > last.o) { return 'bull'; }
-  if (last.c < last.o) { return 'bear'; }
-  return 'neutral';
+  // 完成したローソク足がある場合
+  if (ha && ha.length > 0) {
+    var last = ha[ha.length-1];
+    if (last.c > last.o) { return 'bull'; }
+    if (last.c < last.o) { return 'bear'; }
+    return 'neutral';
+  }
+  // まだ足が完成していない場合はtickBufの最初と最後を比較
+  var buf = tickBuffers[tf];
+  if (buf && buf.length >= 2) {
+    if (buf[buf.length-1] > buf[0]) { return 'bull'; }
+    if (buf[buf.length-1] < buf[0]) { return 'bear'; }
+  }
+  return null;
 }
 
 // ==============================
@@ -781,3 +789,4 @@ window.addEventListener('load', function(){ setTimeout(drawChart, 200); });
 </script>
 </body>
 </html>
+
