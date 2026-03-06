@@ -216,7 +216,7 @@ var haTF    = 5;   // HA signal TF
 
 var CIRC = 101;    // 2*pi*16 ≈ 101
 
-var KANA = ['ぜろ','いち','に','さん','よん','ごう','ろく','なな','はち','きゅう'];
+var KANA_DEC = ['ぜろ','いち','に','さん','よん','ごー','ろく','なな','はち','きゅう'];
 
 // ==============================
 // SPEECH
@@ -264,12 +264,25 @@ function speak(text) {
   }, 5000);
 }
 
+function intToJapanese(n) {
+  var h = Math.floor(n/100);
+  var t = Math.floor((n%100)/10);
+  var o = n%10;
+  var tens = ['','','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var ones = ['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var r = '';
+  if (h===1)     { r+='ひゃく'; }
+  else if (h===2){ r+='にひゃく'; }
+  if (t===1)     { r+='じゅう'; }
+  else if (t>1)  { r+=tens[t]+'じゅう'; }
+  if (o>0)       { r+=ones[o]; }
+  return r;
+}
 function rateText(rate) {
   var s = rate.toFixed(3).split('.');
-  var r = '';
-  for (var i = 0; i < s[0].length; i++) { r += KANA[parseInt(s[0][i])]; }
+  var r = intToJapanese(parseInt(s[0]));
   r += ' てん ';
-  for (var j = 0; j < s[1].length; j++) { r += KANA[parseInt(s[1][j])]; }
+  for (var j = 0; j < s[1].length; j++) { r += KANA_DEC[parseInt(s[1][j])]; }
   return r;
 }
 
