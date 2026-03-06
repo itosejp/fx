@@ -250,7 +250,7 @@ function initSpeech() {
 }
 
 function speak(text) {
-  if (!spReady || !window.speechSynthesis) { return; }
+  if (!window.speechSynthesis) { return; }
   if (!text || text.trim() === '') { return; }
   window.speechSynthesis.cancel();
   var u = new SpeechSynthesisUtterance(text);
