@@ -292,44 +292,128 @@ function rateText(rate) {
   return r;
 }
 
-function rateBodyText(v) {
-  // 実体サイズを読み上げ用テキストに（例: 0.123 → ぜろ てん いちにいさん）
-  var s = v.toFixed(3).split('.');
-  var r = KANA_DEC[parseInt(s[0])] + ' てん ';
+// ==============================
+// NUMBER READING HELPERS
+// ==============================
+
+// 整数を自然な日本語に（0〜9999対応）
+function numToJp(n) {
+  if (n === 0) { return 'ぜろ'; }
+  var result = '';
+  var sen = Math.floor(n / 1000);
+  var hyaku = Math.floor((n % 1000) / 100);
+  var ju = Math.floor((n % 100) / 10);
+  var hito = n % 10;
+  var ONES = ['','いち','にぃ','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var TENS = ['','じゅう','にぃじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
+  if (sen === 1)     { result += 'せん'; }
+  else if (sen > 1)  { result += ONES[sen] + 'せん'; }
+  if (hyaku === 1)   { result += 'ひゃく'; }
+  else if (hyaku === 2) { result += 'にぃひゃく'; }
+  else if (hyaku === 3) { result += 'さんびゃく'; }
+  else if (hyaku === 4) { result += 'よんひゃく'; }
+  else if (hyaku === 5) { result += 'ごひゃく'; }
+  else if (hyaku === 6) { result += 'ろっぴゃく'; }
+  else if (hyaku === 7) { result += 'ななひゃく'; }
+  else if (hyaku === 8) { result += 'はっぴゃく'; }
+  else if (hyaku === 9) { result += 'きゅうひゃく'; }
+  if (ju > 0)  { result += TENS[ju]; }
+  if (hito > 0) { result += ONES[hito]; }
+  return result;
+}
+
+// 為替レート読み上げ（整数部は numToJp、小数部は1桁ずつ）
+var KANA_DEC = ['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
+
+function rateText(rate) {
+  var s = rate.toFixed(3).split('.');
+  var r = numToJp(parseInt(s[0]));
+  r += ' てん ';
   for (var j = 0; j < s[1].length; j++) { r += KANA_DEC[parseInt(s[1][j])]; }
   return r;
+}
+
+// 実体サイズ × 100 → 省略読み（0.258→258→にぃひゃくごじゅうはち）
+function bodyText(body) {
+  var v = Math.round(body * 1000);
+  if (v <= 0) { return ''; }
+  return numToJp(v);
+}
+
+// 変動値 × 100 → 省略読み（±）
+function diffText(diff) {
+  var v = Math.round(Math.abs(diff) * 1000);
+  if (v <= 0) { return ''; }
+  var prefix = diff > 0 ? 'ぷらす' : 'まいなす';
+  return prefix + numToJp(v);
+}
+
+// 時刻読み上げ（じゅうさんじにぃじゅうごふん）
+function timeText() {
+  var now = new Date();
+  var h = now.getHours();
+  var m = now.getMinutes();
+  return 'げんざい' + numToJp(h) + 'じ' + (m === 0 ? 'ちょうど' : numToJp(m) + 'ふん') + 'です';
+}
+
+var lastAnnouncedMin5 = -1;
+
+function checkTimeAnnounce() {
+  var now = new Date();
+  var m = now.getMinutes();
+  var m5 = Math.floor(m / 5) * 5;
+  if (m5 !== lastAnnouncedMin5) {
+    lastAnnouncedMin5 = m5;
+    if (m % 5 === 0) {
+      setTimeout(function() { speak(timeText()); }, 3000);
+    }
+  }
 }
 
 function speakAll(rate, prev) {
   var thr = parseFloat(document.getElementById('thresh').value) || 0.03;
   var prefix = '';
+  var diffStr = '';
+
   if (prev !== null) {
     var diff = rate - prev;
-    if (diff >= thr)       { prefix = '急騰です。'; }
-    else if (diff <= -thr) { prefix = '急落です。'; }
+    if (Math.abs(diff) >= thr) {
+      prefix = diff > 0 ? '急騰です。' : '急落です。';
+    }
+    var ds = diffText(diff);
+    if (ds) { diffStr = '。' + ds; }
   }
-  var tf  = parseInt(document.getElementById('haTF').value) || 5;
+
+  // 設定の時間足でHAシグナル
+  var tf  = parseInt(document.getElementById('haTF').value) || 1;
   var sig = getHaSignal(tf);
   var haText = '';
   if (sig === 'bull' || sig === 'bear') {
     var changed = (prevHaSig !== null && sig !== prevHaSig);
     var color = sig === 'bull' ? 'あお' : 'あか';
-    // 実体サイズ（数値）
-    var bodyStr = '';
+    var bStr = '';
     var ha = haMap[tf];
+    var buf = tickBuffers[tf];
+    var bodyVal = 0;
     if (ha && ha.length > 0) {
       var last = ha[ha.length-1];
-      var body = Math.abs(last.c - last.o);
-      bodyStr = '。' + rateBodyText(body);
+      bodyVal = Math.abs(last.c - last.o);
+    } else if (buf && buf.length >= 2) {
+      bodyVal = Math.abs(buf[buf.length-1] - buf[0]);
     }
+    if (bodyVal > 0) { bStr = '。' + bodyText(bodyVal); }
     if (changed) {
-      haText = '。' + color + 'にかわりました' + bodyStr;
+      haText = '。' + color + 'にかわりました' + bStr;
     } else {
-      haText = '。' + color + bodyStr;
+      haText = '。' + color + bStr;
     }
   }
   prevHaSig = sig;
-  speak(prefix + rateText(rate) + haText);
+
+  // 5分毎の時刻アナウンスチェック
+  checkTimeAnnounce();
+
+  speak(prefix + rateText(rate) + diffStr + haText);
 }
 
 // ==============================
@@ -789,4 +873,3 @@ window.addEventListener('load', function(){ setTimeout(drawChart, 200); });
 </script>
 </body>
 </html>
-
