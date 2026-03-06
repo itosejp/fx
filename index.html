@@ -162,17 +162,24 @@ function get(url,done,fail){
   x.ontimeout=fail; x.onerror=fail; x.send();
 }
 function fetchRate(cb){
-  get('https://latest.currency-api.pages.dev/v1/currencies/usd.json',
-    function(t){try{var d=JSON.parse(t),v=d.usd&&d.usd.jpy;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api2(cb);},
+  // Finnhub REST (リアルタイム・数秒更新)
+  get('https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg',
+    function(t){try{var d=JSON.parse(t),v=d.c||d.l;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api2(cb);},
     function(){api2(cb);});
 }
 function api2(cb){
-  get('https://open.er-api.com/v6/latest/USD',
-    function(t){try{var d=JSON.parse(t),v=d.rates&&d.rates.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api3(cb);},
+  // Finnhub 別シンボル試行
+  get('https://finnhub.io/api/v1/forex/rates?base=USD&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg',
+    function(t){try{var d=JSON.parse(t),v=d.quote&&d.quote.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api3(cb);},
     function(){api3(cb);});
 }
 function api3(cb){
-  get('https://api.frankfurter.app/latest?from=USD&to=JPY',
+  get('https://latest.currency-api.pages.dev/v1/currencies/usd.json',
+    function(t){try{var d=JSON.parse(t),v=d.usd&&d.usd.jpy;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api4(cb);},
+    function(){api4(cb);});
+}
+function api4(cb){
+  get('https://open.er-api.com/v6/latest/USD',
     function(t){try{var d=JSON.parse(t),v=d.rates&&d.rates.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}cb('全API失敗',null);},
     function(){cb('全API失敗',null);});
 }
