@@ -2,131 +2,128 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
 <title>ドル円 読み上げ</title>
 <style>
-body{
-background:#0b0b14;
-color:white;
-font-family:sans-serif;
-text-align:center;
-padding:40px
-}
-
-.price{
-font-size:70px;
-font-weight:900;
-margin:20px
-}
-
-.diff{
-font-size:24px;
-margin:10px
-}
-
-button{
-font-size:20px;
-padding:12px 20px;
-margin:10px
-}
+:root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
+.hdr{text-align:center;padding:4px 0 8px}
+.hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
+.hdr-t{font-size:20px;letter-spacing:3px;color:var(--txt);opacity:.35;font-weight:300}
+.rcard{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:20px 16px 16px;text-align:center;transition:border-color .4s,box-shadow .4s}
+.rnum{font-size:64px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--green)}
+.rdec{font-size:34px;opacity:.75}
+.badges{display:flex;justify-content:center;gap:8px;margin-top:8px}
+.badge{padding:3px 10px;border-radius:16px;font-size:12px;font-weight:700}
+.bchg{background:rgba(0,229,160,.15);color:var(--green)}
+.sbar{display:flex;align-items:flex-end;gap:3px;height:18px;opacity:0;transition:opacity .3s}
+.sbar.on{opacity:1}
+.sb{width:3px;border-radius:2px;background:var(--blue);animation:sd .45s ease-in-out infinite alternate}
+@keyframes sd{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
 </style>
 </head>
 
 <body>
 
-<h2>USD/JPY 読み上げ</h2>
+<div class="wrap">
 
-<div class="price" id="price">---</div>
-<div class="diff" id="diff"></div>
+<div class="hdr">
+<div class="hdr-s">Live Forex</div>
+<div class="hdr-t">ドル円 読み上げ</div>
+</div>
 
-<button onclick="start()">開始</button>
-<button onclick="stop()">停止</button>
+<div class="rcard">
+<div class="pair">USD / JPY</div>
+<div class="rnum" id="rnum">---<span class="rdec">.---</span></div>
+<div class="badges">
+<div class="badge bchg" id="bchg"></div>
+</div>
+
+<div class="sbar" id="sbar">
+<div class="sb"></div>
+<div class="sb"></div>
+<div class="sb"></div>
+</div>
+
+</div>
+
+<button onclick="toggleAuto()">自動読み上げ</button>
+
+</div>
 
 <script>
 
-let lastRate=null
-let timer=null
+var running=false
+var lastRate=null
+
+var KANA=['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう']
+
+function rateText(rate){
+
+var s=rate.toFixed(3)
+var p=s.split('.')
+
+var r=''
+
+for(var i=0;i<p[0].length;i++){
+
+r+=KANA[parseInt(p[0][i])]
+
+}
+
+r+=' てん '
+
+for(var i=0;i<p[1].length;i++){
+
+r+=KANA[parseInt(p[1][i])]
+
+}
+
+return r
+
+}
+
 
 function speak(text){
 
-if(!speechSynthesis)return
+var u=new SpeechSynthesisUtterance(text)
 
-let u=new SpeechSynthesisUtterance(text)
-u.lang="ja-JP"
+u.lang='ja-JP'
+
 u.rate=0.9
 
 speechSynthesis.cancel()
+
 speechSynthesis.speak(u)
 
 }
 
-function rateText(r){
 
-let s=r.toFixed(3)
+function update(rate){
 
-return s.replace(".","てん")
+var el=document.getElementById("rnum")
 
-}
+var s=rate.toFixed(3).split('.')
 
-async function fetchRate(){
+el.innerHTML=s[0]+'<span class="rdec">.'+s[1]+'</span>'
 
-try{
 
-// -------- Finnhub --------
-let r=await fetch("https://finnhub.io/api/v1/quote?symbol=OANDA:USD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg")
+if(lastRate!=null){
 
-let d=await r.json()
+var diff=rate-lastRate
 
-if(d.c){
+var txt=rateText(rate)
 
-return d.c
+txt+="。変動 "
 
-}
+txt+=diff.toFixed(3)
 
-}catch(e){}
+txt+=" 円"
 
-try{
-
-// -------- backup API --------
-
-let r=await fetch("https://api.exchangerate.host/convert?from=USD&to=JPY")
-
-let d=await r.json()
-
-return d.result
-
-}catch(e){}
-
-return null
-
-}
-
-async function update(){
-
-let rate=await fetchRate()
-
-if(!rate)return
-
-document.getElementById("price").innerText=rate.toFixed(3)
-
-if(lastRate!==null){
-
-let diff=rate-lastRate
-
-document.getElementById("diff").innerText=
-
-(diff>0?"+":"")+diff.toFixed(3)
-
-speak(
-
-rateText(rate)+"。"+
-(diff>=0?"プラス":"マイナス")+
-Math.abs(diff).toFixed(3)
-
-)
-
-}else{
-
-speak(rateText(rate))
+speak(txt)
 
 }
 
@@ -134,21 +131,51 @@ lastRate=rate
 
 }
 
-function start(){
 
-if(timer)return
 
-update()
+function fetchRate(){
 
-timer=setInterval(update,10000)
+fetch("https://api.exchangerate.host/convert?from=USD&to=JPY")
+
+.then(r=>r.json())
+
+.then(d=>{
+
+var rate=d.result
+
+if(rate>50 && rate<300){
+
+update(rate)
 
 }
 
-function stop(){
+})
 
-clearInterval(timer)
+.catch(()=>{})
 
-timer=null
+}
+
+
+function loop(){
+
+if(!running)return
+
+fetchRate()
+
+setTimeout(loop,10000)
+
+}
+
+
+function toggleAuto(){
+
+running=!running
+
+if(running){
+
+loop()
+
+}
 
 }
 
