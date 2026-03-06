@@ -115,16 +115,23 @@ canvas#chart{width:100%;height:160px;display:block}
 
 <div class="chartcard">
   <div class="chart-hdr">
-    <div class="chart-title">平均足 + EMA20</div>
+    <div class="chart-title">チャート（TradingView）</div>
     <div class="tf-btns">
-      <button class="tf-btn" onclick="setTF(1)">1m</button>
-      <button class="tf-btn active" id="tf5" onclick="setTF(5)">5m</button>
-      <button class="tf-btn" onclick="setTF(15)">15m</button>
-      <button class="tf-btn" onclick="setTF(60)">1h</button>
-      <button class="tf-btn" onclick="setTF(240)">4h</button>
+      <button class="tf-btn" onclick="setTV('1')">1m</button>
+      <button class="tf-btn active" onclick="setTV('5')">5m</button>
+      <button class="tf-btn" onclick="setTV('15')">15m</button>
+      <button class="tf-btn" onclick="setTV('60')">1h</button>
+      <button class="tf-btn" onclick="setTV('240')">4h</button>
     </div>
   </div>
-  <canvas id="chart"></canvas>
+  <div id="tv-container" style="height:220px;overflow:hidden">
+    <iframe id="tv-frame"
+      src="https://s.tradingview.com/widgetembed/?frameElementId=tv-frame&symbol=FX%3AUSDJPY&interval=5&hidesidetoolbar=1&hidetoptoolbar=1&symboledit=0&saveimage=0&toolbarbg=080810&studies=HeikinAshi%40tv-basicstudies&theme=dark&style=8&timezone=Asia%2FTokyo&withdateranges=0&hideideas=1&locale=ja"
+      style="width:100%;height:220px;border:none;"
+      allowtransparency="true"
+      scrolling="no">
+    </iframe>
+  </div>
 </div>
 
 <div class="hacard">
@@ -312,25 +319,18 @@ function speakAll(rate, prev) {
 // API FETCH (4段フォールバック)
 // ==============================
 function fetchRate(cb) {
+  // Yahoo Finance (数秒単位で更新)
   var x = new XMLHttpRequest();
-  x.open('GET','https://papi.gaitame.com/v1/quotes/all',true);
+  x.open('GET','https://query1.finance.yahoo.com/v8/finance/chart/USDJPY=X?interval=1m&range=1d',true);
   x.timeout = 6000;
   x.onreadystatechange = function() {
     if (x.readyState !== 4) { return; }
     if (x.status === 200) {
       try {
         var d = JSON.parse(x.responseText);
-        var v = null;
-        if (d && d.usdjpy) { v = d.usdjpy.ask || d.usdjpy.bid; }
-        if (!v && d && d.USDJPY) { v = d.USDJPY.ask || d.USDJPY.bid; }
-        if (!v && Array.isArray(d)) {
-          for (var i = 0; i < d.length; i++) {
-            if (d[i].currencyPair==='USDJPY'||d[i].symbol==='USDJPY') {
-              v = d[i].ask||d[i].bid; break;
-            }
-          }
-        }
-        if (v && v > 50 && v < 300) { cb(null,parseFloat(v)); return; }
+        var meta = d.chart && d.chart.result && d.chart.result[0] && d.chart.result[0].meta;
+        var v = meta && (meta.regularMarketPrice || meta.previousClose);
+        if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
       } catch(e) {}
     }
     fetchRateA(cb);
@@ -608,10 +608,7 @@ function updateHADisplay() {
   var buf  = tickBuffers[haTF];
   if (sig === 'bull')    { el.textContent='🔵 あお（陽線）'; el.className='ha-v bull'; }
   else if (sig==='bear') { el.textContent='🔴 あか（陰線）'; el.className='ha-v bear'; }
-  else if (!ha || ha.length===0) {
-    var done = (ha ? ha.length : 0)*need + buf.length;
-    el.textContent='収集中 '+done+'/'+need+'回分'; el.className='ha-v';
-  } else { el.textContent='━ 中立'; el.className='ha-v'; }
+  else { el.textContent='━ データ収集中...'; el.className='ha-v'; }
 }
 
 // ==============================
@@ -693,13 +690,17 @@ function resetRing() {
 // ==============================
 function setTF(tf) {
   chartTF = tf;
-  var btns = document.querySelectorAll('.tf-btn');
-  var labels = ['1m','5m','15m','1h','4h'];
-  var tfs    = [1,5,15,60,240];
-  for (var i=0;i<btns.length;i++) {
-    btns[i].className = (tfs[i]===tf) ? 'tf-btn active' : 'tf-btn';
-  }
   drawChart();
+}
+
+function setTV(interval) {
+  var frame = document.getElementById('tv-frame');
+  frame.src = 'https://s.tradingview.com/widgetembed/?frameElementId=tv-frame&symbol=FX%3AUSDJPY&interval='+interval+'&hidesidetoolbar=1&hidetoptoolbar=1&symboledit=0&saveimage=0&toolbarbg=080810&studies=HeikinAshi%40tv-basicstudies&theme=dark&style=8&timezone=Asia%2FTokyo&withdateranges=0&hideideas=1&locale=ja';
+  var btns = document.querySelectorAll('.tf-btn');
+  var ivs  = ['1','5','15','60','240'];
+  for (var i=0;i<btns.length;i++) {
+    btns[i].className = (ivs[i]===interval) ? 'tf-btn active' : 'tf-btn';
+  }
 }
 
 function onHaTFChange() {
@@ -751,8 +752,8 @@ document.getElementById('shdr').addEventListener('click',toggleSettings);
 function showErr(m){ document.getElementById('errmsg').textContent=m; }
 function clearErr(){ document.getElementById('errmsg').textContent=''; }
 
-// Initial chart draw
-drawChart();
+// Initial chart draw - defer until DOM is ready
+setTimeout(function(){ drawChart(); }, 100);
 </script>
 </body>
 </html>
