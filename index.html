@@ -1,178 +1,132 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<title>ドル円 読み上げ Pro (Pips仕様)</title>
-<style>
-:root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-.wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
-.hdr{text-align:center;padding:4px 0 8px}
-.hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
-.hdr-t{font-size:20px;letter-spacing:3px;color:var(--txt);opacity:.35;font-weight:300}
-.rcard{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:20px 16px 16px;text-align:center;transition:all .4s ease}
-.rcard.bull{border-color:rgba(0,229,160,.5);box-shadow:0 0 24px rgba(0,229,160,.1)}
-.rcard.bear{border-color:rgba(255,69,96,.5);box-shadow:0 0 24px rgba(255,69,96,.1)}
-.pair{font-size:10px;letter-spacing:4px;color:var(--dim);margin-bottom:6px}
-.rnum{font-size:64px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--green)}
-.rnum.bear{color:var(--red)}
-.rdec{font-size:34px;opacity:.75}
-.badges{display:flex;justify-content:center;gap:8px;margin-top:8px;min-height:24px}
-.badge{padding:3px 10px;border-radius:16px;font-size:12px;font-weight:700;display:none}
-.badge.show{display:inline-block}
-.bchg.up{background:rgba(0,229,160,.15);color:var(--green)}
-.bchg.dn{background:rgba(255,69,96,.15);color:var(--red)}
-.sbar{display:flex;align-items:flex-end;gap:3px;height:18px;opacity:0;transition:opacity .3s;justify-content:center;margin-top:6px}
-.sbar.on{opacity:1}
-.sb{width:3px;border-radius:2px;background:var(--blue);animation:sd .45s ease-in-out infinite alternate}
-@keyframes sd{from{transform:scaleY(.3);opacity:.4}to{transform:scaleY(1);opacity:1}}
-.trow{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px}
-.ring{position:relative;width:42px;height:42px}
-.rsvg{width:42px;height:42px;transform:rotate(-90deg)}
-.rtrk{fill:none;stroke:var(--bd);stroke-width:3}
-.rprg{fill:none;stroke:var(--green);stroke-width:3;stroke-dasharray:113;transition:stroke-dashoffset 1s linear}
-.rn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;font-weight:900;color:var(--green)}
-.lcard{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
-.llist{max-height:150px;overflow-y:auto}
-.litem{display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(26,26,46,.5);font-size:12px}
-.bmain{width:100%;padding:16px;background:linear-gradient(135deg,#00e5a0,#00c87a);border:none;border-radius:14px;color:#080810;font-weight:700;cursor:pointer}
-.bmain.active{background:linear-gradient(135deg,#1a1a2e,#222240);color:var(--red)}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+    <title>USDJPY Voice</title>
+    <style>
+        :root{--bg:#0a0a12;--card:#161625;--green:#00ffa3;--red:#ff4d6d;--txt:#ffffff;--dim:#888}
+        body{background:var(--bg);color:var(--txt);font-family:sans-serif;display:flex;justify-content:center;padding:20px}
+        .container{width:100%;max-width:400px;background:var(--card);padding:20px;border-radius:20px;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,0.5)}
+        .label{font-size:12px;color:var(--dim);letter-spacing:2px}
+        .price{font-size:54px;font-weight:bold;margin:10px 0;font-variant-numeric: tabular-nums}
+        .diff{font-size:20px;margin-bottom:20px;height:24px}
+        .up{color:var(--green)}
+        .down{color:var(--red)}
+        button{width:100%;padding:15px;border-radius:12px;border:none;background:var(--green);color:#000;font-weight:bold;font-size:16px;cursor:pointer;margin-bottom:10px}
+        button:active{opacity:0.8}
+        #log{margin-top:20px;text-align:left;font-size:12px;color:var(--dim);max-height:100px;overflow-y:auto;border-top:1px solid #333;padding-top:10px}
+    </style>
 </head>
 <body>
-<div class="wrap">
-  <div class="hdr"><div class="hdr-s">Live Forex</div><div class="hdr-t">ドル円 読み上げ</div></div>
-  <div class="rcard" id="rcard">
-    <div class="pair">USD / JPY</div>
-    <div id="rnum" class="rnum">---<span class="rdec">.---</span></div>
-    <div class="badges"><div class="badge bchg" id="bchg"></div></div>
-    <div class="sbar" id="sbar"><div class="sb" style="height:10px"></div><div class="sb" style="height:18px"></div><div class="sb" style="height:12px"></div></div>
-  </div>
-  <div class="trow">
-    <div class="ring"><svg class="rsvg"><circle class="rtrk" cx="21" cy="21" r="18"/><circle id="rprg" class="rprg" cx="21" cy="21" r="18"/></svg><div class="rn" id="rn">10</div></div>
-    <div><div style="font-size:10px;color:var(--dim)">NEXT</div><div id="tst">待機中</div></div>
-  </div>
-  <div class="lcard"><div class="llist" id="llist"></div></div>
-  <button class="bmain" id="bmain" onclick="toggleAuto()">▶ 自動読み上げ 開始</button>
-</div>
+    <div class="container">
+        <div class="label">USD / JPY</div>
+        <div id="price" class="price">---.--</div>
+        <div id="diff" class="diff"></div>
+        <button id="startBtn">▶ 自動読み上げ 開始</button>
+        <div id="status" style="font-size:10px; color:var(--dim)">停止中</div>
+        <div id="log"></div>
+    </div>
 
 <script>
-let running = false, lastRate = null, cd = 10, nextTmr, cntTmr;
-const KANA = ['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
+    let lastRate = null;
+    let timer = null;
+    const KANA = ['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
 
-function rateToKana(rate) {
-  const [int, dec] = rate.toFixed(3).split('.');
-  let res = "";
-  for(let c of int) res += KANA[parseInt(c)];
-  res += ' てん ';
-  for(let c of dec) res += KANA[parseInt(c)];
-  return res;
-}
+    // 数値を日本語の読み上げテキストに変換
+    function getRateReading(rate) {
+        const parts = rate.toFixed(3).split('.');
+        let text = "";
+        for(let c of parts[0]) text += KANA[parseInt(c)];
+        text += " てん ";
+        for(let c of parts[1]) text += KANA[parseInt(c)];
+        return text;
+    }
 
-function getDiffText(rate, prev) {
-  if (!prev) return "";
-  const diffPoints = Math.round((rate - prev) * 1000);
-  if (diffPoints === 0) return "。変化なし。";
-  
-  const sign = diffPoints > 0 ? "プラス" : "マイナス";
-  const v = Math.abs(diffPoints);
-  
-  // 読み方の調整（5と15を優先対応、他は数字並べ）
-  let valText = "";
-  if (v === 5) valText = "ごー";
-  else if (v === 15) valText = "じゅうご";
-  else {
-    for(let c of v.toString()) valText += KANA[parseInt(c)];
-  }
-  
-  return `。${sign}${valText}。`;
-}
+    // 変動値の読み上げテキスト作成
+    function getDiffReading(current, last) {
+        if (!last) return "";
+        const diffPips = Math.round((current - last) * 1000);
+        if (diffPips === 0) return "。変化なし。";
 
-async function fetchRate() {
-  try {
-    const r = await fetch('https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg');
-    const d = await r.json();
-    const v = d.c || d.l;
-    if (v) processRate(parseFloat(v));
-  } catch(e) { console.error("API Error"); }
-}
+        const sign = diffPips > 0 ? "プラス" : "マイナス";
+        const val = Math.abs(diffPips);
+        
+        let valText = "";
+        if (val === 5) valText = "ごー";
+        else if (val === 15) valText = "じゅうご";
+        else {
+            for(let c of val.toString()) valText += KANA[parseInt(c)];
+        }
+        return `。${sign}${valText}。`;
+    }
 
-function processRate(rate) {
-  const prev = lastRate;
-  updateUI(rate, prev);
-  
-  let txt = rateToKana(rate);
-  txt += getDiffText(rate, prev);
-  
-  speak(txt);
-  addLog(rate, prev);
-  lastRate = rate;
-}
+    // 音声合成
+    function speak(text) {
+        window.speechSynthesis.cancel();
+        const uttr = new SpeechSynthesisUtterance(text);
+        uttr.lang = 'ja-JP';
+        uttr.rate = 1.1; // 少し速め
+        window.speechSynthesis.speak(uttr);
+    }
 
-function updateUI(rate, prev) {
-  const s = rate.toFixed(3).split('.');
-  document.getElementById('rnum').innerHTML = `${s[0]}<span class="rdec">.${s[1]}</span>`;
-  if (prev) {
-    const d = rate - prev;
-    const bc = document.getElementById('bchg');
-    bc.textContent = (d >= 0 ? '+' : '') + d.toFixed(3);
-    bc.className = `badge bchg ${d >= 0 ? 'up' : 'dn'} show`;
-    document.getElementById('rnum').className = `rnum ${d < 0 ? 'bear' : ''}`;
-  }
-}
+    // メインの取得処理
+    async function updateRate() {
+        try {
+            // 代替APIを含むフェッチ（Finnhubがダメな場合も想定）
+            const response = await fetch('https://open.er-api.com/v6/latest/USD');
+            const data = await response.json();
+            const rate = data.rates.JPY;
 
-function speak(text) {
-  window.speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ja-JP'; u.rate = 1.0;
-  u.onstart = () => document.getElementById('sbar').classList.add('on');
-  u.onend = () => document.getElementById('sbar').classList.remove('on');
-  window.speechSynthesis.speak(u);
-}
+            if (!rate) throw new Error("Invalid data");
 
-function toggleAuto() {
-  if (running) {
-    running = false;
-    document.getElementById('bmain').textContent = '▶ 自動読み上げ 開始';
-    document.getElementById('bmain').classList.remove('active');
-    clearTimeout(nextTmr); clearInterval(cntTmr);
-  } else {
-    running = true;
-    document.getElementById('bmain').textContent = '■ 停止';
-    document.getElementById('bmain').classList.add('active');
-    // 初回無音再生（iOS対策）
-    window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
-    loop();
-  }
-}
+            const priceEl = document.getElementById('price');
+            const diffEl = document.getElementById('diff');
+            
+            // 画面表示更新
+            priceEl.textContent = rate.toFixed(3);
+            
+            let speechTxt = getRateReading(rate);
+            
+            if (lastRate !== null) {
+                const d = rate - lastRate;
+                const pips = Math.round(d * 1000);
+                diffEl.textContent = (pips > 0 ? "+" : "") + pips + " pts";
+                diffEl.className = "diff " + (pips >= 0 ? "up" : "down");
+                speechTxt += getDiffReading(rate, lastRate);
+            }
 
-function loop() {
-  fetchRate();
-  cd = 10;
-  updateRing();
-  clearInterval(cntTmr);
-  cntTmr = setInterval(() => {
-    cd--; updateRing();
-    if (cd <= 0) clearInterval(cntTmr);
-  }, 1000);
-  nextTmr = setTimeout(() => { if(running) loop(); }, 10000);
-}
+            speak(speechTxt);
+            
+            // ログ記録
+            const log = document.getElementById('log');
+            log.innerHTML = `<div>${new Date().toLocaleTimeString()} : ${rate.toFixed(3)}</div>` + log.innerHTML;
+            
+            lastRate = rate;
 
-function updateRing() {
-  document.getElementById('rn').textContent = cd;
-  document.getElementById('rprg').style.strokeDashoffset = 113 * (1 - cd/10);
-}
+        } catch (e) {
+            document.getElementById('status').textContent = "取得エラー: " + e.message;
+        }
+    }
 
-function addLog(rate, prev) {
-  const list = document.getElementById('llist');
-  const item = document.createElement('div');
-  item.className = 'litem';
-  const diff = prev ? (rate - prev).toFixed(3) : "---";
-  item.innerHTML = `<span style="color:var(--dim)">${new Date().toLocaleTimeString()}</span><b>${rate.toFixed(3)}</b><span style="color:${parseFloat(diff)>0?'var(--green)':'var(--red)'}">${diff}</span>`;
-  list.insertBefore(item, list.firstChild);
-}
+    // ボタン操作
+    document.getElementById('startBtn').addEventListener('click', function() {
+        if (timer) {
+            clearInterval(timer);
+            timer = null;
+            this.textContent = "▶ 自動読み上げ 開始";
+            this.style.background = "#00ffa3";
+            document.getElementById('status').textContent = "停止中";
+        } else {
+            // iOS等のブラウザ対策：クリックイベント内で一度空の音声を出す
+            speak(""); 
+            updateRate();
+            timer = setInterval(updateRate, 10000); // 10秒おき
+            this.textContent = "■ 停止";
+            this.style.background = "#ff4d6d";
+            document.getElementById('status').textContent = "10秒ごとに更新中...";
+        }
+    });
 </script>
 </body>
 </html>
