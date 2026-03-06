@@ -223,7 +223,7 @@ var haTF    = 5;   // HA signal TF
 
 var CIRC = 101;    // 2*pi*16 ≈ 101
 
-var KANA_DEC = ['ぜろ','いち','に','さん','よん','ごー','ろく','なな','はち','きゅう'];
+var KANA_DEC = ['ぜろ','いち','にい','さん','よん','ごー','ろく','なな','はち','きゅう'];
 
 // ==============================
 // SPEECH
@@ -275,8 +275,8 @@ function intToJapanese(n) {
   var h = Math.floor(n/100);
   var t = Math.floor((n%100)/10);
   var o = n%10;
-  var tens = ['','','に','さん','よん','ご','ろく','なな','はち','きゅう'];
-  var ones = ['','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var tens = ['','','にい','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var ones = ['','いち','にい','さん','よん','ご','ろく','なな','はち','きゅう'];
   var r = '';
   if (h===1)     { r+='ひゃく'; }
   else if (h===2){ r+='にひゃく'; }
@@ -293,6 +293,14 @@ function rateText(rate) {
   return r;
 }
 
+function rateBodyText(v) {
+  // 実体サイズを読み上げ用テキストに（例: 0.123 → ぜろ てん いちにいさん）
+  var s = v.toFixed(3).split('.');
+  var r = KANA_DEC[parseInt(s[0])] + ' てん ';
+  for (var j = 0; j < s[1].length; j++) { r += KANA_DEC[parseInt(s[1][j])]; }
+  return r;
+}
+
 function speakAll(rate, prev) {
   var thr = parseFloat(document.getElementById('thresh').value) || 0.03;
   var prefix = '';
@@ -301,14 +309,24 @@ function speakAll(rate, prev) {
     if (diff >= thr)       { prefix = '急騰です。'; }
     else if (diff <= -thr) { prefix = '急落です。'; }
   }
-  var sig = getHaSignal(haTF);
+  var tf  = parseInt(document.getElementById('haTF').value) || 5;
+  var sig = getHaSignal(tf);
   var haText = '';
-  if (sig !== null) {
+  if (sig === 'bull' || sig === 'bear') {
     var changed = (prevHaSig !== null && sig !== prevHaSig);
+    var color = sig === 'bull' ? 'あお' : 'あか';
+    // 実体サイズ（数値）
+    var bodyStr = '';
+    var ha = haMap[tf];
+    if (ha && ha.length > 0) {
+      var last = ha[ha.length-1];
+      var body = Math.abs(last.c - last.o);
+      bodyStr = '。' + rateBodyText(body);
+    }
     if (changed) {
-      haText = sig === 'bull' ? '。あおにかわりました' : '。あかにかわりました';
+      haText = '。' + color + 'にかわりました' + bodyStr;
     } else {
-      haText = sig === 'bull' ? '。あお' : '。あか';
+      haText = '。' + color + bodyStr;
     }
   }
   prevHaSig = sig;
@@ -703,8 +721,16 @@ function setTV(interval) {
 
 function onHaTFChange() {
   haTF = parseInt(document.getElementById('haTF').value)||5;
+  chartTF = haTF;
   prevHaSig = null;
+  // チャートボタンも同期
+  var tfs = [1,5,15,60,240];
+  var btns = document.querySelectorAll('.tf-btn');
+  for (var i=0;i<btns.length;i++) {
+    btns[i].className = (tfs[i]===haTF) ? 'tf-btn active' : 'tf-btn';
+  }
   updateHADisplay();
+  drawChart();
 }
 
 // ==============================
