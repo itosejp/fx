@@ -423,69 +423,75 @@ function connectWS() {
   };
 }
 
-function fetchRate(cb) {
-  // 1st: WebSocket価格があればそれを使う
-  if (wsRate !== null) { cb(null, wsRate); return; }
-  // 2nd: freeforexapi (APIキー不要・リアルタイム)
+function xhrGet(url, timeout, onOK, onFail) {
   var x = new XMLHttpRequest();
-  x.open('GET','https://www.freeforexapi.com/api/live?pairs=USDJPY',true);
-  x.timeout = 6000;
+  x.open('GET', url, true);
+  x.timeout = timeout;
   x.onreadystatechange = function() {
     if (x.readyState !== 4) { return; }
-    if (x.status === 200) {
-      try {
-        var d = JSON.parse(x.responseText);
-        var v = d && d.rates && d.rates.USDJPY && d.rates.USDJPY.rate;
-        if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
-      } catch(e) {}
-    }
-    fetchRateA(cb);
+    if (x.status === 200) { onOK(x.responseText); } else { onFail(); }
   };
-  x.ontimeout = function() { fetchRateA(cb); };
-  x.onerror   = function() { fetchRateA(cb); };
+  x.ontimeout = onFail;
+  x.onerror   = onFail;
   x.send();
+}
+
+function fetchRate(cb) {
+  // WebSocket価格があればそれを使う
+  if (wsRate !== null) { cb(null, wsRate); return; }
+  fetchRateA(cb);
 }
 
 function fetchRateA(cb) {
-  // 3rd: fawazahmed0 CDN
-  var x = new XMLHttpRequest();
-  x.open('GET','https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',true);
-  x.timeout = 6000;
-  x.onreadystatechange = function() {
-    if (x.readyState !== 4) { return; }
-    if (x.status === 200) {
+  // fawazahmed0 新URL (pages.dev)
+  xhrGet('https://latest.currency-api.pages.dev/v1/currencies/usd.json', 6000,
+    function(txt) {
       try {
-        var d = JSON.parse(x.responseText);
+        var d = JSON.parse(txt);
         var v = d && d.usd && d.usd.jpy;
         if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
       } catch(e) {}
-    }
-    fetchRateB(cb);
-  };
-  x.ontimeout = function() { fetchRateB(cb); };
-  x.onerror   = function() { fetchRateB(cb); };
-  x.send();
+      fetchRateB(cb);
+    }, function() { fetchRateB(cb); });
 }
 
 function fetchRateB(cb) {
-  // 4th: frankfurter
-  var x = new XMLHttpRequest();
-  x.open('GET','https://api.frankfurter.app/latest?from=USD&to=JPY',true);
-  x.timeout = 8000;
-  x.onreadystatechange = function() {
-    if (x.readyState !== 4) { return; }
-    if (x.status === 200) {
+  // fawazahmed0 CDN (jsdelivr) - 新パッケージ名
+  xhrGet('https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.min.json', 6000,
+    function(txt) {
       try {
-        var d = JSON.parse(x.responseText);
+        var d = JSON.parse(txt);
+        var v = d && d.usd && d.usd.jpy;
+        if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+      } catch(e) {}
+      fetchRateC(cb);
+    }, function() { fetchRateC(cb); });
+}
+
+function fetchRateC(cb) {
+  // frankfurter (欧州中央銀行ベース・毎日更新)
+  xhrGet('https://api.frankfurter.app/latest?from=USD&to=JPY', 8000,
+    function(txt) {
+      try {
+        var d = JSON.parse(txt);
         var v = d.rates && d.rates.JPY;
         if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
       } catch(e) {}
-    }
-    cb('全API失敗', null);
-  };
-  x.ontimeout = function() { cb('タイムアウト', null); };
-  x.onerror   = function() { cb('ネットワークエラー', null); };
-  x.send();
+      fetchRateD(cb);
+    }, function() { fetchRateD(cb); });
+}
+
+function fetchRateD(cb) {
+  // open.er-api.com (無料・CORS対応)
+  xhrGet('https://open.er-api.com/v6/latest/USD', 8000,
+    function(txt) {
+      try {
+        var d = JSON.parse(txt);
+        var v = d.rates && d.rates.JPY;
+        if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+      } catch(e) {}
+      cb('全API失敗', null);
+    }, function() { cb('全API失敗', null); });
 }
 
 // ==============================
