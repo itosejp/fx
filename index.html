@@ -91,7 +91,9 @@ var cdTmr = null;
 var last = null;
 var CIRC = 101;
 var lastMin5 = -1;
-var fetching = false;  // 二重fetch防止
+var fetching = false;
+var lastFetchTime = 0;
+var wdog = null;
 
 // ---- 数字読み ----
 var DEC=['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
@@ -114,7 +116,10 @@ function rateJp(rate){
 }
 function diffJp(d){
   var v=Math.round(Math.abs(d)*1000);
-  if(!v) return '';
+  if(!v){
+    // 0.001未満でも方向だけ読む
+    return d>0?'ぷらす':'まいなす';
+  }
   return (d>0?'ぷらす':'まいなす')+numJp(v);
 }
 function timeJp(){
@@ -139,16 +144,37 @@ function initAudio(){
 }
 function say(txt){
   if(!window.speechSynthesis||!txt) return;
+  // iOS: AudioContext再起動で音声エンジンを叩き起こす
+  if(actx){
+    if(actx.state==='suspended') actx.resume();
+    try{
+      var b=actx.createBuffer(1,1,22050),s=actx.createBufferSource();
+      s.buffer=b; s.connect(actx.destination); s.start(0);
+    }catch(e){}
+  }
   speechSynthesis.cancel();
-  if(actx&&actx.state==='suspended') actx.resume();
-  var u=new SpeechSynthesisUtterance(txt);
-  u.lang='ja-JP'; u.rate=0.88; u.volume=1.0;
-  speechSynthesis.resume();
-  speechSynthesis.speak(u);
-  var k=setInterval(function(){
-    if(!speechSynthesis.speaking){clearInterval(k);return;}
-    speechSynthesis.pause(); speechSynthesis.resume();
-  },5000);
+  setTimeout(function(){
+    var u=new SpeechSynthesisUtterance(txt);
+    u.lang='ja-JP'; u.rate=0.88; u.volume=1.0;
+    u.onend=function(){ /* 正常終了 */ };
+    u.onerror=function(e){
+      // エラー時は100ms後に再試行
+      if(e.error!=='canceled'){
+        setTimeout(function(){
+          var u2=new SpeechSynthesisUtterance(txt);
+          u2.lang='ja-JP'; u2.rate=0.88; u2.volume=1.0;
+          speechSynthesis.speak(u2);
+        },100);
+      }
+    };
+    speechSynthesis.resume();
+    speechSynthesis.speak(u);
+    // iOS15+停止防止キック
+    var k=setInterval(function(){
+      if(!speechSynthesis.speaking){clearInterval(k);return;}
+      speechSynthesis.pause(); speechSynthesis.resume();
+    },4000);
+  },50);
 }
 
 // ---- API ----
@@ -194,6 +220,7 @@ function doFetch(){
     if(err||!rate){document.getElementById('err').textContent='取得失敗';return;}
     var prev=last, diff=prev!==null?rate-prev:0;
     last=rate;
+    lastFetchTime=Date.now();
     // 画面
     var s=rate.toFixed(3).split('.');
     var el=document.getElementById('rnum');
@@ -207,7 +234,7 @@ function doFetch(){
     addLog(rate,diff,prev);
     // 読み上げ
     var txt=rateJp(rate);
-    if(prev!==null&&Math.abs(diff)>=0.001) txt+='。'+diffJp(diff);
+    if(prev!==null&&diff!==0) txt+='。'+diffJp(diff);
     var m=new Date().getMinutes();
     if(m%5===0&&m!==lastMin5){lastMin5=m; txt+='。'+timeJp();}
     say(txt);
@@ -257,15 +284,24 @@ function start(){
   document.getElementById('tst').textContent='10秒ごとに更新中';
   doFetch();
   startCD();
-  // setIntervalで確実に10秒ごと実行（止まらない）
+  // setIntervalで確実に10秒ごと実行
   iv=setInterval(function(){
     cd=10;
     doFetch();
   },10000);
+  // watchdog: 30秒以上更新がなければ強制再起動
+  lastFetchTime=Date.now();
+  wdog=setInterval(function(){
+    if(running && Date.now()-lastFetchTime>25000){
+      clearInterval(iv);
+      iv=setInterval(function(){ cd=10; doFetch(); },10000);
+      doFetch();
+    }
+  },15000);
 }
 function stop(){
   running=false;
-  clearInterval(iv); clearInterval(cdTmr); iv=null;
+  clearInterval(iv); clearInterval(cdTmr); clearInterval(wdog); iv=null; wdog=null;
   document.getElementById('bmain').textContent='▶ 自動読み上げ 開始';
   document.getElementById('bmain').className='bmain';
   document.getElementById('tst').textContent='停止中';
