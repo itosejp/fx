@@ -250,7 +250,8 @@ function initSpeech() {
 }
 
 function speak(text) {
-  if (!window.speechSynthesis) { return; }
+  if (!spReady || !window.speechSynthesis) { return; }
+  if (!text || text.trim() === '') { return; }
   window.speechSynthesis.cancel();
   var u = new SpeechSynthesisUtterance(text);
   u.lang = 'ja-JP'; u.rate = 0.88; u.pitch = 1.0; u.volume = 1.0;
@@ -484,14 +485,20 @@ function candleKey(tf) {
 }
 
 // 現在足バッファ: {key, ticks[]}
-var currentCandle = {1:null, 5:null, 15:null, 60:null, 240:null};
+var currentCandle = {
+  1:  {key:-1, ticks:[]},
+  5:  {key:-1, ticks:[]},
+  15: {key:-1, ticks:[]},
+  60: {key:-1, ticks:[]},
+  240:{key:-1, ticks:[]}
+};
 
 function addTickAllTF(rate) {
   var tfs = [1,5,15,60,240];
   for (var i = 0; i < tfs.length; i++) {
     var tf = tfs[i];
     var key = candleKey(tf);
-    if (!currentCandle[tf] || currentCandle[tf].key !== key) {
+    if (currentCandle[tf].key !== key) {
       // 足が変わった → 前の足を確定
       if (currentCandle[tf] && currentCandle[tf].ticks.length > 0) {
         var ticks = currentCandle[tf].ticks;
@@ -537,7 +544,7 @@ function getHaSignal(tf) {
   }
   // 現在足（未確定）で判断
   var cur = currentCandle[tf];
-  if (cur && cur.ticks.length >= 2) {
+  if (cur.ticks.length >= 2) {
     var first = cur.ticks[0];
     var latest = cur.ticks[cur.ticks.length-1];
     if (latest > first) { return 'bull'; }
@@ -553,7 +560,7 @@ function getHaBody(tf) {
     return Math.abs(last.c - last.o);
   }
   var cur = currentCandle[tf];
-  if (cur && cur.ticks.length >= 2) {
+  if (cur.ticks.length >= 2) {
     return Math.abs(cur.ticks[cur.ticks.length-1] - cur.ticks[0]);
   }
   return 0;
