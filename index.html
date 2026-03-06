@@ -2,220 +2,153 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ドル円 読み上げ</title>
-
 <style>
 body{
-background:#0a0a12;
-color:#e8e8f2;
+background:#0b0b14;
+color:white;
 font-family:sans-serif;
 text-align:center;
-padding:20px;
+padding:40px
 }
 
-.rate{
-font-size:64px;
+.price{
+font-size:70px;
 font-weight:900;
-margin-top:20px;
+margin:20px
 }
 
-.btn{
-margin-top:20px;
-padding:14px 24px;
-font-size:18px;
-border:none;
-border-radius:10px;
-background:#00e5a0;
+.diff{
+font-size:24px;
+margin:10px
 }
 
-.log{
-margin-top:20px;
-max-width:320px;
-margin-left:auto;
-margin-right:auto;
-font-size:14px;
+button{
+font-size:20px;
+padding:12px 20px;
+margin:10px
 }
 </style>
 </head>
 
 <body>
 
-<h2>USD / JPY</h2>
+<h2>USD/JPY 読み上げ</h2>
 
-<div class="rate" id="rate">---</div>
+<div class="price" id="price">---</div>
+<div class="diff" id="diff"></div>
 
-<button class="btn" onclick="toggle()">自動読み上げ</button>
-
-<div class="log" id="log"></div>
+<button onclick="start()">開始</button>
+<button onclick="stop()">停止</button>
 
 <script>
 
-var running=false
-var lastRate=null
-var timer=null
-
-var KANA=['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう']
-
-function numText(v){
-
-var s=v.toFixed(3)
-var p=s.split('.')
-
-var r=''
-
-for(var i=0;i<p[0].length;i++){
-r+=KANA[parseInt(p[0][i])]
-}
-
-r+=' てん '
-
-for(var j=0;j<p[1].length;j++){
-r+=KANA[parseInt(p[1][j])]
-}
-
-return r
-
-}
-
-function diffText(diff){
-
-var s=Math.abs(diff).toFixed(3)
-
-var p=s.split('.')
-
-var r=''
-
-for(var i=0;i<p[0].length;i++){
-r+=KANA[parseInt(p[0][i])]
-}
-
-r+=' てん '
-
-for(var j=0;j<p[1].length;j++){
-r+=KANA[parseInt(p[1][j])]
-}
-
-return r
-
-}
+let lastRate=null
+let timer=null
 
 function speak(text){
 
-if(!window.speechSynthesis)return
+if(!speechSynthesis)return
 
-if(window.speechSynthesis.speaking){
-window.speechSynthesis.cancel()
-}
+let u=new SpeechSynthesisUtterance(text)
+u.lang="ja-JP"
+u.rate=0.9
 
-var u=new SpeechSynthesisUtterance(text)
-
-u.lang='ja-JP'
-u.rate=0.85
-
-window.speechSynthesis.speak(u)
+speechSynthesis.cancel()
+speechSynthesis.speak(u)
 
 }
 
-function fetchRate(){
+function rateText(r){
 
-fetch("https://api.frankfurter.app/latest?from=USD&to=JPY")
+let s=r.toFixed(3)
 
-.then(r=>r.json())
-
-.then(d=>{
-
-var rate=d.rates.JPY
-
-update(rate)
-
-})
-
-.catch(()=>{
-
-log("取得失敗")
-
-})
+return s.replace(".","てん")
 
 }
 
-function update(rate){
+async function fetchRate(){
 
-document.getElementById("rate").innerText=rate.toFixed(3)
+try{
 
-var prev=lastRate
+// -------- Finnhub --------
+let r=await fetch("https://finnhub.io/api/v1/quote?symbol=OANDA:USD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg")
 
-var txt=numText(rate)
+let d=await r.json()
 
-if(prev!=null){
+if(d.c){
 
-var diff=rate-prev
-
-if(diff>0){
-
-txt+="。ぷらす "+diffText(diff)
+return d.c
 
 }
 
-else if(diff<0){
+}catch(e){}
 
-txt+="。まいなす "+diffText(diff)
+try{
 
-}
+// -------- backup API --------
 
-else{
+let r=await fetch("https://api.exchangerate.host/convert?from=USD&to=JPY")
 
-txt+="。へんかなし"
+let d=await r.json()
 
-}
+return d.result
 
-if(diff>=0.03){
-txt="急騰です。"+txt
-}
+}catch(e){}
 
-if(diff<=-0.03){
-txt="急落です。"+txt
-}
+return null
 
 }
 
-speak(txt)
+async function update(){
 
-log(rate.toFixed(3))
+let rate=await fetchRate()
+
+if(!rate)return
+
+document.getElementById("price").innerText=rate.toFixed(3)
+
+if(lastRate!==null){
+
+let diff=rate-lastRate
+
+document.getElementById("diff").innerText=
+
+(diff>0?"+":"")+diff.toFixed(3)
+
+speak(
+
+rateText(rate)+"。"+
+(diff>=0?"プラス":"マイナス")+
+Math.abs(diff).toFixed(3)
+
+)
+
+}else{
+
+speak(rateText(rate))
+
+}
 
 lastRate=rate
 
 }
 
-function log(t){
+function start(){
 
-var el=document.getElementById("log")
+if(timer)return
 
-var d=document.createElement("div")
+update()
 
-d.innerText=new Date().toLocaleTimeString()+"  "+t
-
-el.prepend(d)
+timer=setInterval(update,10000)
 
 }
 
-function toggle(){
-
-running=!running
-
-if(running){
-
-fetchRate()
-
-timer=setInterval(fetchRate,10000)
-
-}
-
-else{
+function stop(){
 
 clearInterval(timer)
 
-}
+timer=null
 
 }
 
