@@ -8,15 +8,17 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#080810;color:#e8e8f2;font-family:'Hiragino Sans',sans-serif;display:flex;justify-content:center}
-.wrap{width:100%;max-width:400px;padding:20px 14px 60px;display:flex;flex-direction:column;gap:10px}
-.hdr{text-align:center;font-size:22px;letter-spacing:3px;color:#fff;opacity:.3;font-weight:300;margin-bottom:4px}
-.rcard{background:#10101a;border:1px solid #1a1a2e;border-radius:16px;padding:20px;text-align:center}
-.rnum{font-size:68px;font-weight:900;color:#00e5a0;line-height:1}
+.wrap{width:100%;max-width:420px;padding:16px 12px 60px;display:flex;flex-direction:column;gap:10px}
+.hdr{text-align:center;font-size:20px;letter-spacing:3px;color:#fff;opacity:.3;font-weight:300}
+.rcard{background:#10101a;border:1px solid #1a1a2e;border-radius:16px;padding:18px;text-align:center}
+.rnum{font-size:66px;font-weight:900;color:#00e5a0;line-height:1}
 .rnum.dn{color:#ff4560}
-.rdec{font-size:36px;opacity:.75}
-.rdiff{font-size:16px;margin-top:6px;color:#4a4a6a;min-height:22px}
-.rdiff.up{color:#00b8ff}
-.rdiff.dn{color:#ff4560}
+.rdec{font-size:34px;opacity:.75}
+.rdiff{font-size:15px;margin-top:6px;color:#4a4a6a;min-height:22px}
+.rdiff.up{color:#00b8ff}.rdiff.dn{color:#ff4560}
+.chart-wrap{background:#10101a;border:1px solid #1a1a2e;border-radius:14px;overflow:hidden}
+.chart-hdr{padding:8px 12px;font-size:10px;letter-spacing:2px;color:#4a4a6a;border-bottom:1px solid #1a1a2e}
+.chart-wrap iframe{width:100%;height:220px;border:none;display:block}
 .trow{background:#10101a;border:1px solid #1a1a2e;border-radius:12px;padding:10px 14px;display:flex;align-items:center;gap:12px}
 .ring{position:relative;width:40px;height:40px;flex-shrink:0}
 .rsvg{width:40px;height:40px;transform:rotate(-90deg)}
@@ -27,7 +29,7 @@ body{background:#080810;color:#e8e8f2;font-family:'Hiragino Sans',sans-serif;dis
 .tst{font-size:13px;margin-top:2px}
 .lcard{background:#10101a;border:1px solid #1a1a2e;border-radius:12px;overflow:hidden}
 .lhdr{padding:8px 12px;border-bottom:1px solid #1a1a2e;font-size:10px;letter-spacing:2px;color:#4a4a6a}
-.llist{max-height:120px;overflow-y:auto}
+.llist{max-height:110px;overflow-y:auto}
 .litem{display:flex;justify-content:space-between;padding:6px 12px;border-bottom:1px solid #0d0d1a;font-size:12px}
 .ltm{color:#4a4a6a;font-size:10px}
 .lrt{font-size:16px;font-weight:900}
@@ -48,6 +50,11 @@ body{background:#080810;color:#e8e8f2;font-family:'Hiragino Sans',sans-serif;dis
   <div class="rcard">
     <div class="rnum" id="rnum">---<span class="rdec">.---</span></div>
     <div class="rdiff" id="rdiff">USD / JPY</div>
+  </div>
+
+  <div class="chart-wrap">
+    <div class="chart-hdr">TRADINGVIEW チャート</div>
+    <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tv&symbol=FX%3AUSDJPY&interval=5&hidesidetoolbar=1&hidetoptoolbar=1&symboledit=0&saveimage=0&toolbarbg=080810&studies=MAExp%4020&theme=dark&style=8&timezone=Asia%2FTokyo&withdateranges=0&hide_side_toolbar=1&allow_symbol_change=0&calendar=0&hotlist=0&news=0" allowtransparency="true" frameborder="0"></iframe>
   </div>
 
   <div class="trow">
@@ -76,152 +83,131 @@ body{background:#080810;color:#e8e8f2;font-family:'Hiragino Sans',sans-serif;dis
   <div class="err" id="err"></div>
   <div class="note" id="note"><b>最初に「自動読み上げ 開始」をタップ</b><br>すると音声が有効になります</div>
 </div>
-
 <script>
 var running = false;
-var tmr = null, ctmr = null, cd = 10;
+var iv = null;   // setInterval handle - 止まらない
+var cd = 10;
+var cdTmr = null;
 var last = null;
 var CIRC = 101;
 var lastMin5 = -1;
+var fetching = false;  // 二重fetch防止
 
 // ---- 数字読み ----
-var DEC = ['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
-
-function numJp(n) {
-  if (n === 0) return 'ぜろ';
-  var r = '';
-  var s = n >= 1000, h = Math.floor((n%1000)/100), j = Math.floor((n%100)/10), o = n%10;
-  var O = ['','いち','にぃ','さん','よん','ご','ろく','なな','はち','きゅう'];
-  var J = ['','じゅう','にぃじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
-  var H = ['','ひゃく','にぃひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'];
-  if (Math.floor(n/1000)===1) r+='せん'; else if (Math.floor(n/1000)>1) r+=O[Math.floor(n/1000)]+'せん';
-  r += H[h] + J[j];
-  if (o) r += O[o];
+var DEC=['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
+function numJp(n){
+  if(!n||n===0) return 'ぜろ';
+  var O=['','いち','にぃ','さん','よん','ご','ろく','なな','はち','きゅう'];
+  var J=['','じゅう','にぃじゅう','さんじゅう','よんじゅう','ごじゅう','ろくじゅう','ななじゅう','はちじゅう','きゅうじゅう'];
+  var H=['','ひゃく','にぃひゃく','さんびゃく','よんひゃく','ごひゃく','ろっぴゃく','ななひゃく','はっぴゃく','きゅうひゃく'];
+  var r='', t=Math.floor(n/1000);
+  if(t===1) r+='せん'; else if(t>1) r+=O[t]+'せん';
+  r+=H[Math.floor((n%1000)/100)]+J[Math.floor((n%100)/10)];
+  if(n%10) r+=O[n%10];
   return r;
 }
-
-function rateJp(rate) {
-  var s = rate.toFixed(3).split('.');
-  var r = numJp(parseInt(s[0])) + ' てん ';
-  for (var i=0;i<s[1].length;i++) r += DEC[parseInt(s[1][i])];
+function rateJp(rate){
+  var s=rate.toFixed(3).split('.');
+  var r=numJp(parseInt(s[0]))+' てん ';
+  for(var i=0;i<s[1].length;i++) r+=DEC[parseInt(s[1][i])];
   return r;
 }
-
-function diffJp(d) {
-  var v = Math.round(Math.abs(d)*1000);
-  if (!v) return '';
-  return (d>0?'ぷらす':'まいなす') + numJp(v);
+function diffJp(d){
+  var v=Math.round(Math.abs(d)*1000);
+  if(!v) return '';
+  return (d>0?'ぷらす':'まいなす')+numJp(v);
 }
-
-function timeJp() {
-  var n=new Date(), h=n.getHours(), m=n.getMinutes();
+function timeJp(){
+  var n=new Date(),h=n.getHours(),m=n.getMinutes();
   return 'げんざい'+numJp(h)+'じ'+(m?numJp(m)+'ふん':'ちょうど')+'です';
 }
 
 // ---- 音声 ----
-var ctx = null;
-function initAudio() {
-  if (ctx) return;
-  try {
-    ctx = new (window.AudioContext||window.webkitAudioContext)();
-    var b=ctx.createBuffer(1,1,22050), s=ctx.createBufferSource();
-    s.buffer=b; s.connect(ctx.destination); s.start(0);
-  } catch(e) {}
-  if (window.speechSynthesis) {
+var actx=null;
+function initAudio(){
+  if(actx) return;
+  try{
+    actx=new(window.AudioContext||window.webkitAudioContext)();
+    var b=actx.createBuffer(1,1,22050),s=actx.createBufferSource();
+    s.buffer=b; s.connect(actx.destination); s.start(0);
+  }catch(e){}
+  if(window.speechSynthesis){
     var u=new SpeechSynthesisUtterance('');
-    u.volume=0; u.lang='ja-JP';
-    speechSynthesis.speak(u);
+    u.volume=0; u.lang='ja-JP'; speechSynthesis.speak(u);
   }
   document.getElementById('note').style.display='none';
 }
-
-function say(txt) {
-  if (!window.speechSynthesis || !txt) return;
+function say(txt){
+  if(!window.speechSynthesis||!txt) return;
   speechSynthesis.cancel();
-  if (ctx && ctx.state==='suspended') ctx.resume();
-  var u = new SpeechSynthesisUtterance(txt);
-  u.lang='ja-JP'; u.rate=0.88; u.pitch=1.0; u.volume=1.0;
+  if(actx&&actx.state==='suspended') actx.resume();
+  var u=new SpeechSynthesisUtterance(txt);
+  u.lang='ja-JP'; u.rate=0.88; u.volume=1.0;
   speechSynthesis.resume();
   speechSynthesis.speak(u);
-  // iOS stall防止
   var k=setInterval(function(){
-    if (!speechSynthesis.speaking){clearInterval(k);return;}
+    if(!speechSynthesis.speaking){clearInterval(k);return;}
     speechSynthesis.pause(); speechSynthesis.resume();
   },5000);
 }
 
 // ---- API ----
-function get(url, done, fail) {
+function get(url,done,fail){
   var x=new XMLHttpRequest();
   x.open('GET',url,true); x.timeout=7000;
   x.onreadystatechange=function(){
-    if(x.readyState!==4)return;
-    if(x.status===200){done(x.responseText);}else{fail();}
+    if(x.readyState!==4) return;
+    if(x.status===200) done(x.responseText); else fail();
   };
   x.ontimeout=fail; x.onerror=fail; x.send();
 }
-
-function fetchRate(cb) {
+function fetchRate(cb){
   get('https://latest.currency-api.pages.dev/v1/currencies/usd.json',
-    function(t){
-      try{var d=JSON.parse(t),v=d.usd&&d.usd.jpy;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}
-      api2(cb);
-    }, function(){api2(cb);});
+    function(t){try{var d=JSON.parse(t),v=d.usd&&d.usd.jpy;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api2(cb);},
+    function(){api2(cb);});
 }
 function api2(cb){
   get('https://open.er-api.com/v6/latest/USD',
-    function(t){
-      try{var d=JSON.parse(t),v=d.rates&&d.rates.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}
-      api3(cb);
-    }, function(){api3(cb);});
+    function(t){try{var d=JSON.parse(t),v=d.rates&&d.rates.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}api3(cb);},
+    function(){api3(cb);});
 }
 function api3(cb){
   get('https://api.frankfurter.app/latest?from=USD&to=JPY',
-    function(t){
-      try{var d=JSON.parse(t),v=d.rates&&d.rates.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}
-      cb('全API失敗',null);
-    }, function(){cb('全API失敗',null);});
+    function(t){try{var d=JSON.parse(t),v=d.rates&&d.rates.JPY;if(v>50&&v<300){cb(null,+v);return;}}catch(e){}cb('全API失敗',null);},
+    function(){cb('全API失敗',null);});
 }
 
 // ---- メイン ----
-function doFetch() {
+function doFetch(){
+  if(fetching) return;  // 二重防止
+  fetching=true;
   document.getElementById('err').textContent='';
-  fetchRate(function(err, rate) {
-    if (err||!rate) { document.getElementById('err').textContent='取得失敗: '+(err||'null'); return; }
-
-    var prev = last;
-    var diff = prev!==null ? rate-prev : 0;
-    last = rate;
-
-    // 画面更新
+  fetchRate(function(err,rate){
+    fetching=false;
+    if(err||!rate){document.getElementById('err').textContent='取得失敗';return;}
+    var prev=last, diff=prev!==null?rate-prev:0;
+    last=rate;
+    // 画面
     var s=rate.toFixed(3).split('.');
     var el=document.getElementById('rnum');
     el.innerHTML=s[0]+'<span class="rdec">.'+s[1]+'</span>';
     el.className='rnum'+(diff<-0.001?' dn':'');
-
     var de=document.getElementById('rdiff');
     if(prev!==null){
-      var sign=diff>=0?'+':'';
-      de.textContent=sign+diff.toFixed(3)+' 円';
+      de.textContent=(diff>=0?'+':'')+diff.toFixed(3)+' 円';
       de.className='rdiff'+(diff>0.001?' up':diff<-0.001?' dn':'');
     }
-
-    // 履歴
-    addLog(rate, diff, prev);
-
+    addLog(rate,diff,prev);
     // 読み上げ
-    var txt = rateJp(rate);
-    if (prev!==null && Math.abs(diff)>=0.001) txt += '。' + diffJp(diff);
-
-    // 5分毎の時刻
-    var now=new Date(), m=now.getMinutes();
-    if(m%5===0 && m!==lastMin5){ lastMin5=m; txt+='。'+timeJp(); }
-
+    var txt=rateJp(rate);
+    if(prev!==null&&Math.abs(diff)>=0.001) txt+='。'+diffJp(diff);
+    var m=new Date().getMinutes();
+    if(m%5===0&&m!==lastMin5){lastMin5=m; txt+='。'+timeJp();}
     say(txt);
   });
 }
 
-function addLog(rate, diff, prev) {
+function addLog(rate,diff,prev){
   var list=document.getElementById('llist');
   if(list.children.length===1&&list.children[0].style.justifyContent==='center') list.innerHTML='';
   while(list.children.length>=15) list.removeChild(list.lastChild);
@@ -235,41 +221,50 @@ function addLog(rate, diff, prev) {
   list.insertBefore(d,list.firstChild);
 }
 
-function schedNext() {
-  clearTimeout(tmr); clearInterval(ctmr);
-  var iv=10; cd=iv; upRing();
-  ctmr=setInterval(function(){ cd--; upRing(); if(cd<=0) clearInterval(ctmr); },1000);
-  tmr=setTimeout(function(){ if(running){doFetch();schedNext();} },iv*1000);
+// カウントダウン
+function startCD(){
+  clearInterval(cdTmr);
+  cd=10;
+  upRing();
+  cdTmr=setInterval(function(){
+    cd--; upRing();
+    if(cd<=0) cd=10;  // リセット（setIntervalで自動更新）
+  },1000);
 }
-
-function upRing() {
-  var iv=10;
+function upRing(){
   document.getElementById('rn').textContent=cd;
-  document.getElementById('rprg').style.strokeDashoffset=CIRC*(1-cd/iv);
+  document.getElementById('rprg').style.strokeDashoffset=CIRC*(1-cd/10);
   var hot=cd<=3;
   document.getElementById('rprg').style.stroke=hot?'#ff4560':'#00e5a0';
   document.getElementById('rn').style.color=hot?'#ff4560':'#00e5a0';
 }
 
-function toggle() {
+function toggle(){
   initAudio();
-  if(running){ stop(); } else { start(); }
+  if(running){stop();}else{start();}
 }
-function start() {
+function start(){
   running=true;
   document.getElementById('bmain').textContent='■ 自動読み上げ 停止';
   document.getElementById('bmain').className='bmain on';
   document.getElementById('tst').textContent='10秒ごとに更新中';
-  doFetch(); schedNext();
+  doFetch();
+  startCD();
+  // setIntervalで確実に10秒ごと実行（止まらない）
+  iv=setInterval(function(){
+    cd=10;
+    doFetch();
+  },10000);
 }
-function stop() {
+function stop(){
   running=false;
-  clearTimeout(tmr); clearInterval(ctmr);
+  clearInterval(iv); clearInterval(cdTmr); iv=null;
   document.getElementById('bmain').textContent='▶ 自動読み上げ 開始';
   document.getElementById('bmain').className='bmain';
   document.getElementById('tst').textContent='停止中';
+  cd=10; upRing();
 }
-function once() { initAudio(); doFetch(); }
+function once(){ initAudio(); doFetch(); }
 </script>
 </body>
 </html>
