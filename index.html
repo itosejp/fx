@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
@@ -8,7 +9,7 @@
 <style>
 :root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans','Noto Sans JP',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
 .wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
 .hdr{text-align:center;padding:4px 0 8px}
 .hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
@@ -61,7 +62,15 @@ body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-seri
 .err{color:var(--red);font-size:11px;text-align:center;min-height:14px;padding:0 8px}
 .note{font-size:11px;color:var(--dim);text-align:center;line-height:1.8}
 .note b{color:var(--yellow)}
+
+/* 変動値読み上げパネル */
+.vcard{background:var(–sf);border:1px solid var(–bd);border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.vlbl{font-size:10px;letter-spacing:1px;color:var(–dim);text-transform:uppercase}
+.vval{font-size:20px;font-weight:900;color:var(–dim);transition:color .3s}
+.vval.up{color:var(–green)}.vval.dn{color:var(–red)}
+.vspeech{font-size:10px;color:var(–dim);margin-top:2px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 </style>
+
 </head>
 <body>
 <div class="wrap">
@@ -78,6 +87,20 @@ body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-seri
     <div class="sb"></div><div class="sb"></div>
   </div>
 </div>
+
+<!-- 変動値パネル -->
+
+<div class="vcard" id="vcard">
+  <div>
+    <div class="vlbl">前回比 変動</div>
+    <div class="vval" id="vval">---</div>
+  </div>
+  <div style="text-align:right">
+    <div class="vlbl">読み上げ内容</div>
+    <div class="vspeech" id="vspeech">-</div>
+  </div>
+</div>
+
 <div class="trow">
   <div class="ring">
     <svg class="rsvg" viewBox="0 0 42 42"><circle class="rtrk" cx="21" cy="21" r="18"/><circle class="rprg" id="rprg" cx="21" cy="21" r="18"/></svg>
@@ -95,197 +118,330 @@ body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-seri
 <div class="note" id="note"><b>最初に「自動読み上げ 開始」をタップ</b><br>すると音声が有効になります</div>
 </div>
 <script>
-var running=false, nextTmr=null, cntTmr=null, cd=10, lastRate=null, spReady=false, CIRC=113;
-var lastMin5=-1;
-var KANA=['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
+var running = false;
+var mainInterval = null;  // setInterval ID (メインループ)
+var cntTmr = null;        // カウントダウン用 setInterval
+var cd = 10;
+var lastRate = null;
+var spReady = false;
+var CIRC = 113;
+var lastMin5 = -1;
+var speakQueue = [];
+var isSpeaking = false;
 
-function rateText(rate){
-  var s=rate.toFixed(3),p=s.split('.'),r='';
-  for(var i=0;i<p[0].length;i++){r+=KANA[parseInt(p[0][i])];}
-  r+=' てん ';
-  for(var j=0;j<p[1].length;j++){r+=KANA[parseInt(p[1][j])];}
-  return r;
+var KANA = [‘ぜろ’,‘いち’,‘にぃ’,‘さん’,‘よん’,‘ごー’,‘ろく’,‘なな’,‘はち’,‘きゅう’];
+
+// ───── 数字→かな変換 ─────
+function rateText(rate) {
+var s = rate.toFixed(3).split(’.’);
+var r = ‘’;
+for (var i = 0; i < s[0].length; i++) r += KANA[parseInt(s[0][i])];
+r += ’ てん ’;
+for (var j = 0; j < s[1].length; j++) r += KANA[parseInt(s[1][j])];
+return r;
 }
 
-// Finnhub REST (リアルタイム数秒更新)
-function fetchRate(cb){
-  var x=new XMLHttpRequest();
-  x.open('GET','https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg',true);
-  x.timeout=7000;
-  x.onreadystatechange=function(){
-    if(x.readyState===4){
-      if(x.status===200){
-        try{var d=JSON.parse(x.responseText),v=d.c||d.l;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}
-      }
-      fetchRateA(cb);
-    }
-  };
-  x.ontimeout=function(){fetchRateA(cb);};
-  x.onerror=function(){fetchRateA(cb);};
-  x.send();
+// 変動値をかな読みに変換（例: +0.023 → 「プラス 0.023円」）
+function diffText(diff) {
+if (diff === null) return ‘’;
+var abs = Math.abs(diff);
+if (abs < 0.001) return ‘まえかいとおなじ’;
+var sign = diff > 0 ? ‘ぷらす’ : ‘まいなす’;
+var s = abs.toFixed(3).split(’.’);
+var r = sign + ’ ’;
+for (var i = 0; i < s[0].length; i++) r += KANA[parseInt(s[0][i])];
+r += ’ てん ‘;
+for (var j = 0; j < s[1].length; j++) r += KANA[parseInt(s[1][j])];
+r += ’ えん’;
+return r;
 }
 
-function fetchRateA(cb){
-  var done=false,cbName='fxa'+Date.now(),el=null;
-  var tid=setTimeout(function(){if(done){return;}done=true;window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}fetchRateB(cb);},8000);
-  window[cbName]=function(data){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}try{var v=data&&data.rates&&data.rates.JPY;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}fetchRateB(cb);};
-  el=document.createElement('script');
-  el.src='https://api.exchangerate-api.com/v4/latest/USD?callback='+cbName;
-  el.onerror=function(){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;fetchRateB(cb);};
-  document.head.appendChild(el);
+// ───── API取得チェーン ─────
+function fetchRate(cb) {
+var x = new XMLHttpRequest();
+x.open(‘GET’, ‘https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg’, true);
+x.timeout = 7000;
+x.onreadystatechange = function() {
+if (x.readyState === 4) {
+if (x.status === 200) {
+try { var d = JSON.parse(x.responseText), v = d.c || d.l; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {}
+}
+fetchRateA(cb);
+}
+};
+x.ontimeout = function() { fetchRateA(cb); };
+x.onerror = function() { fetchRateA(cb); };
+x.send();
 }
 
-function fetchRateB(cb){
-  var done=false,cbName='fxb'+Date.now(),el=null;
-  var tid=setTimeout(function(){if(done){return;}done=true;window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}fetchRateC(cb);},8000);
-  window[cbName]=function(data){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}try{var v=data&&data.rates&&data.rates.JPY;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}fetchRateC(cb);};
-  el=document.createElement('script');
-  el.src='https://open.er-api.com/v6/latest/USD?callback='+cbName;
-  el.onerror=function(){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;fetchRateC(cb);};
-  document.head.appendChild(el);
+function fetchRateA(cb) {
+var done = false, cbName = ‘fxa’ + Date.now(), el = null;
+var tid = setTimeout(function() { if (done) return; done = true; window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); fetchRateB(cb); }, 8000);
+window[cbName] = function(data) { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); try { var v = data && data.rates && data.rates.JPY; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {} fetchRateB(cb); };
+el = document.createElement(‘script’);
+el.src = ‘https://api.exchangerate-api.com/v4/latest/USD?callback=’ + cbName;
+el.onerror = function() { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; fetchRateB(cb); };
+document.head.appendChild(el);
 }
 
-function fetchRateC(cb){
-  var x=new XMLHttpRequest();
-  x.open('GET','https://api.frankfurter.app/latest?from=USD&to=JPY',true);
-  x.timeout=8000;
-  x.onreadystatechange=function(){if(x.readyState===4){if(x.status===200){try{var d=JSON.parse(x.responseText),v=d.rates&&d.rates.JPY;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}}cb('全API失敗',null);}};
-  x.ontimeout=function(){cb('タイムアウト',null);};
-  x.onerror=function(){cb('ネットワークエラー',null);};
-  x.send();
+function fetchRateB(cb) {
+var done = false, cbName = ‘fxb’ + Date.now(), el = null;
+var tid = setTimeout(function() { if (done) return; done = true; window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); fetchRateC(cb); }, 8000);
+window[cbName] = function(data) { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); try { var v = data && data.rates && data.rates.JPY; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {} fetchRateC(cb); };
+el = document.createElement(‘script’);
+el.src = ‘https://open.er-api.com/v6/latest/USD?callback=’ + cbName;
+el.onerror = function() { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; fetchRateC(cb); };
+document.head.appendChild(el);
 }
 
-function doFetch(){
-  clearErr();
-  fetchRate(function(err,rate){
-    if(err||rate===null){showErr('取得失敗: '+(err||'null'));return;}
-    var prev=lastRate;
-    updateDisplay(rate,prev);
-    addLog(rate,prev);
-    lastRate=rate;
-    speakAll(rate,prev);
-  });
+function fetchRateC(cb) {
+var x = new XMLHttpRequest();
+x.open(‘GET’, ‘https://api.frankfurter.app/latest?from=USD&to=JPY’, true);
+x.timeout = 8000;
+x.onreadystatechange = function() { if (x.readyState === 4) { if (x.status === 200) { try { var d = JSON.parse(x.responseText), v = d.rates && d.rates.JPY; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {} } cb(‘全API失敗’, null); } };
+x.ontimeout = function() { cb(‘タイムアウト’, null); };
+x.onerror = function() { cb(‘ネットワークエラー’, null); };
+x.send();
 }
 
-function doOnce(){initSpeech();doFetch();}
-
-function updateDisplay(rate,prev){
-  var card=document.getElementById('rcard'),el=document.getElementById('rnum'),bc=document.getElementById('bchg'),bs=document.getElementById('bsrg');
-  var s=rate.toFixed(3).split('.');
-  el.innerHTML=s[0]+'<span class="rdec">.' +s[1]+'</span>';
-  el.className='rnum'; card.className='rcard';
-  if(prev!==null){
-    var diff=rate-prev,sign=diff>=0?'+':'',arrow=diff>0.001?'↑':diff<-0.001?'↓':'→';
-    bc.textContent=arrow+' '+sign+diff.toFixed(3)+' 円';
-    var cls=diff>0.001?'up':diff<-0.001?'dn':'nc';
-    bc.className='badge bchg '+cls+' show';
-    if(diff>0.001){card.className='rcard bull';}
-    else if(diff<-0.001){el.className='rnum bear';card.className='rcard bear';}
-    var thr=0.03;
-    if(Math.abs(diff)>=thr){
-      bs.textContent=diff>0?'急騰！':'急落！';
-      bs.className='badge bsrg show';
-      setTimeout(function(){bs.className='badge bsrg';},8000);
-    }
-  }
+// ───── メインフェッチ ─────
+function doFetch() {
+clearErr();
+fetchRate(function(err, rate) {
+if (err || rate === null) { showErr(’取得失敗: ’ + (err || ‘null’)); return; }
+var prev = lastRate;
+var diff = (prev !== null) ? (rate - prev) : null;
+updateDisplay(rate, diff);
+updateDiffPanel(diff, rate);
+addLog(rate, diff);
+lastRate = rate;
+buildAndSpeak(rate, diff);
+});
 }
 
-function speakAll(rate,prev){
-  var txt=rateText(rate);
-  if(prev!==null){
-    var diff=rate-prev,thr=0.03;
-    if(diff>=thr){txt='急騰です。'+txt;}
-    else if(diff<=-thr){txt='急落です。'+txt;}
-  }
-  // 5分ごとに時刻読み上げ
-  var m=new Date().getMinutes();
-  if(m%5===0&&m!==lastMin5){lastMin5=m;txt+='。'+timeText();}
-  speak(txt);
+function doOnce() { initSpeech(); doFetch(); }
+
+// ───── 表示更新 ─────
+function updateDisplay(rate, diff) {
+var card = document.getElementById(‘rcard’);
+var el = document.getElementById(‘rnum’);
+var bc = document.getElementById(‘bchg’);
+var bs = document.getElementById(‘bsrg’);
+var s = rate.toFixed(3).split(’.’);
+el.innerHTML = s[0] + ‘<span class="rdec">.’ + s[1] + ‘</span>’;
+el.className = ‘rnum’; card.className = ‘rcard’;
+if (diff !== null) {
+var sign = diff >= 0 ? ‘+’ : ‘’;
+var arrow = diff > 0.001 ? ‘↑’ : diff < -0.001 ? ‘↓’ : ‘→’;
+bc.textContent = arrow + ’ ’ + sign + diff.toFixed(3) + ’ 円’;
+var cls = diff > 0.001 ? ‘up’ : diff < -0.001 ? ‘dn’ : ‘nc’;
+bc.className = ‘badge bchg ’ + cls + ’ show’;
+if (diff > 0.001) { card.className = ‘rcard bull’; }
+else if (diff < -0.001) { el.className = ‘rnum bear’; card.className = ‘rcard bear’; }
+var thr = 0.03;
+if (Math.abs(diff) >= thr) {
+bs.textContent = diff > 0 ? ‘急騰！’ : ‘急落！’;
+bs.className = ‘badge bsrg show’;
+setTimeout(function() { bs.className = ‘badge bsrg’; }, 8000);
+}
+}
 }
 
-function timeText(){
-  var n=new Date(),h=n.getHours(),m=n.getMinutes();
-  var H=['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう','じゅう','じゅういち','じゅうにぃ','じゅうさん','じゅうよん','じゅうごー','じゅうろく','じゅうなな','じゅうはち','じゅうきゅう','にぃじゅう','にぃじゅういち','にぃじゅうにぃ','にぃじゅうさん'];
-  var M=['ぜろぜろ','ぜろいち','ぜろにぃ','ぜろさん','ぜろよん','ぜろごー','ぜろろく','ぜろなな','ぜろはち','ぜろきゅう','じゅう','じゅういち','じゅうにぃ','じゅうさん','じゅうよん','じゅうごー','じゅうろく','じゅうなな','じゅうはち','じゅうきゅう','にぃじゅう','にぃじゅういち','にぃじゅうにぃ','にぃじゅうさん','にぃじゅうよん','にぃじゅうごー','にぃじゅうろく','にぃじゅうなな','にぃじゅうはち','にぃじゅうきゅう','さんじゅう','さんじゅういち','さんじゅうにぃ','さんじゅうさん','さんじゅうよん','さんじゅうごー','さんじゅうろく','さんじゅうなな','さんじゅうはち','さんじゅうきゅう','よんじゅう','よんじゅういち','よんじゅうにぃ','よんじゅうさん','よんじゅうよん','よんじゅうごー','よんじゅうろく','よんじゅうなな','よんじゅうはち','よんじゅうきゅう','ごじゅう','ごじゅういち','ごじゅうにぃ','ごじゅうさん','ごじゅうよん','ごじゅうごー','ごじゅうろく','ごじゅうなな','ごじゅうはち','ごじゅうきゅう'];
-  return 'げんざい'+(H[h]||h)+'じ'+(m===0?'ちょうど':(M[m]||m)+'ふん')+'です';
+function updateDiffPanel(diff, rate) {
+var vv = document.getElementById(‘vval’);
+var vs = document.getElementById(‘vspeech’);
+if (diff === null) { vv.textContent = ‘初回取得’; vv.className = ‘vval’; vs.textContent = rateText(rate); return; }
+var sign = diff >= 0 ? ‘+’ : ‘’;
+vv.textContent = sign + diff.toFixed(3) + ’ 円’;
+vv.className = ’vval ’ + (diff > 0.001 ? ‘up’ : diff < -0.001 ? ‘dn’ : ‘’);
+var dkana = diffText(diff);
+vs.textContent = rateText(rate) + ‘、’ + dkana;
 }
 
-function initSpeech(){
-  if(spReady||!window.speechSynthesis){return;}
-  var u=new SpeechSynthesisUtterance('');u.volume=0;u.lang='ja-JP';
-  window.speechSynthesis.speak(u);spReady=true;
-  document.getElementById('note').style.display='none';
+// ───── 音声合成：安定キュー方式 ─────
+function initSpeech() {
+if (spReady || !window.speechSynthesis) return;
+var u = new SpeechSynthesisUtterance(’’);
+u.volume = 0; u.lang = ‘ja-JP’;
+window.speechSynthesis.speak(u);
+spReady = true;
+document.getElementById(‘note’).style.display = ‘none’;
 }
 
-function speak(text){
-  if(!window.speechSynthesis){return;}
-  window.speechSynthesis.cancel();
-  var u=new SpeechSynthesisUtterance(text);
-  u.lang='ja-JP';u.rate=0.85;u.pitch=1.0;u.volume=1.0;
-  var bar=document.getElementById('sbar');
-  u.onstart=function(){bar.className='sbar on';};
-  u.onend=function(){bar.className='sbar';};
-  u.onerror=function(){bar.className='sbar';};
-  window.speechSynthesis.resume();
-  window.speechSynthesis.speak(u);
-  var kick=setInterval(function(){
-    if(!window.speechSynthesis.speaking){clearInterval(kick);return;}
-    window.speechSynthesis.pause();window.speechSynthesis.resume();
-  },5000);
+// キューに積んでシリアル再生
+function enqueueSpeak(text) {
+speakQueue.push(text);
+if (!isSpeaking) drainQueue();
 }
 
-function toggleAuto(){initSpeech();if(running){stopAuto();}else{startAuto();}}
+function drainQueue() {
+if (speakQueue.length === 0) { isSpeaking = false; document.getElementById(‘sbar’).className = ‘sbar’; return; }
+isSpeaking = true;
+var text = speakQueue.shift();
+document.getElementById(‘sbar’).className = ‘sbar on’;
 
-function startAuto(){
-  running=true;
-  document.getElementById('bmain').textContent='■ 自動読み上げ 停止';
-  document.getElementById('bmain').className='bmain active';
-  document.getElementById('tst').textContent='10秒ごとに更新中';
-  doFetch();schedNext();
+if (!window.speechSynthesis) { isSpeaking = false; return; }
+window.speechSynthesis.cancel();
+
+var u = new SpeechSynthesisUtterance(text);
+u.lang = ‘ja-JP’; u.rate = 0.85; u.pitch = 1.0; u.volume = 1.0;
+
+// iOS Safariは長い発話で止まるためkickが必要
+var kick = null;
+function startKick() {
+kick = setInterval(function() {
+if (!window.speechSynthesis.speaking) { clearInterval(kick); return; }
+window.speechSynthesis.pause();
+window.speechSynthesis.resume();
+}, 5000);
 }
 
-function stopAuto(){
-  running=false;
-  clearTimeout(nextTmr);clearInterval(cntTmr);
-  document.getElementById('bmain').textContent='▶ 自動読み上げ 開始';
-  document.getElementById('bmain').className='bmain';
-  document.getElementById('tst').textContent='停止中';
-  resetRing();
+u.onstart = function() { startKick(); };
+u.onend = function() { clearInterval(kick); drainQueue(); };
+u.onerror = function() { clearInterval(kick); isSpeaking = false; document.getElementById(‘sbar’).className = ‘sbar’; };
+
+window.speechSynthesis.resume();
+window.speechSynthesis.speak(u);
 }
 
-// 元の schedNext (setTimeout再帰) — 最初に動いていた方式
-function schedNext(){
-  clearTimeout(nextTmr);clearInterval(cntTmr);
-  cd=10;updateRing();
-  cntTmr=setInterval(function(){cd--;updateRing();if(cd<=0){clearInterval(cntTmr);}},1000);
-  nextTmr=setTimeout(function(){if(running){doFetch();schedNext();}},10000);
+// 読み上げテキスト構築（レート＋変動値）
+function buildAndSpeak(rate, diff) {
+var parts = [];
+
+// 急騰・急落プレフィックス
+if (diff !== null && Math.abs(diff) >= 0.03) {
+parts.push(diff > 0 ? ‘きゅうとうです’ : ‘きゅうらくです’);
 }
 
-function updateRing(){
-  var p=document.getElementById('rprg'),n=document.getElementById('rn');
-  n.textContent=cd;p.style.strokeDashoffset=CIRC*(1-cd/10);
-  var hot=cd<=3;p.style.stroke=hot?'var(--red)':'var(--green)';n.style.color=hot?'var(--red)':'var(--green)';
-}
-function resetRing(){
-  var p=document.getElementById('rprg'),n=document.getElementById('rn');
-  n.textContent='10';n.style.color='var(--green)';p.style.strokeDashoffset=0;p.style.stroke='var(--green)';
+// レート読み上げ
+parts.push(rateText(rate));
+
+// 変動値読み上げ（必ず付ける）
+if (diff !== null) {
+var dkana = diffText(diff);
+parts.push(dkana);
 }
 
-function addLog(rate,prev){
-  var list=document.getElementById('llist');
-  if(list.children.length===1&&list.children[0].style.justifyContent==='center'){list.innerHTML='';}
-  while(list.children.length>=12){list.removeChild(list.lastChild);}
-  var now=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  var cls='nc',dstr='';
-  if(prev!==null){var d=rate-prev;dstr=(d>=0?'+':'')+d.toFixed(3);cls=d>0.001?'up':d<-0.001?'dn':'nc';}
-  var dcol=cls==='up'?'var(--green)':cls==='dn'?'var(--red)':'var(--dim)';
-  var item=document.createElement('div');item.className='litem';
-  item.innerHTML='<span class="ltm">'+now+'</span><span class="lrt '+cls+'">'+rate.toFixed(3)+'</span><span class="ldf" style="color:'+dcol+'">'+dstr+'</span>';
-  list.insertBefore(item,list.firstChild);
+// 5分ごとに時刻
+var m = new Date().getMinutes();
+if (m % 5 === 0 && m !== lastMin5) {
+lastMin5 = m;
+parts.push(timeText());
 }
 
-function showErr(m){document.getElementById('errmsg').textContent=m;}
-function clearErr(){document.getElementById('errmsg').textContent='';}
+var txt = parts.join(’。’);
+// vspeechに表示
+document.getElementById(‘vspeech’).textContent = txt;
+enqueueSpeak(txt);
+}
+
+function timeText() {
+var n = new Date(), h = n.getHours(), m = n.getMinutes();
+var H = [‘ぜろ’,‘いち’,‘にぃ’,‘さん’,‘よん’,‘ごー’,‘ろく’,‘なな’,‘はち’,‘きゅう’,‘じゅう’,‘じゅういち’,‘じゅうにぃ’,‘じゅうさん’,‘じゅうよん’,‘じゅうごー’,‘じゅうろく’,‘じゅうなな’,‘じゅうはち’,‘じゅうきゅう’,‘にぃじゅう’,‘にぃじゅういち’,‘にぃじゅうにぃ’,‘にぃじゅうさん’];
+var M = [‘ぜろぜろ’,‘ぜろいち’,‘ぜろにぃ’,‘ぜろさん’,‘ぜろよん’,‘ぜろごー’,‘ぜろろく’,‘ぜろなな’,‘ぜろはち’,‘ぜろきゅう’,‘じゅう’,‘じゅういち’,‘じゅうにぃ’,‘じゅうさん’,‘じゅうよん’,‘じゅうごー’,‘じゅうろく’,‘じゅうなな’,‘じゅうはち’,‘じゅうきゅう’,‘にぃじゅう’,‘にぃじゅういち’,‘にぃじゅうにぃ’,‘にぃじゅうさん’,‘にぃじゅうよん’,‘にぃじゅうごー’,‘にぃじゅうろく’,‘にぃじゅうなな’,‘にぃじゅうはち’,‘にぃじゅうきゅう’,‘さんじゅう’,‘さんじゅういち’,‘さんじゅうにぃ’,‘さんじゅうさん’,‘さんじゅうよん’,‘さんじゅうごー’,‘さんじゅうろく’,‘さんじゅうなな’,‘さんじゅうはち’,‘さんじゅうきゅう’,‘よんじゅう’,‘よんじゅういち’,‘よんじゅうにぃ’,‘よんじゅうさん’,‘よんじゅうよん’,‘よんじゅうごー’,‘よんじゅうろく’,‘よんじゅうなな’,‘よんじゅうはち’,‘よんじゅうきゅう’,‘ごじゅう’,‘ごじゅういち’,‘ごじゅうにぃ’,‘ごじゅうさん’,‘ごじゅうよん’,‘ごじゅうごー’,‘ごじゅうろく’,‘ごじゅうなな’,‘ごじゅうはち’,‘ごじゅうきゅう’];
+return ‘げんざい’ + (H[h] || h) + ‘じ’ + (m === 0 ? ‘ちょうど’ : (M[m] || m) + ‘ふん’) + ‘です’;
+}
+
+// ───── 安定インターバル制御 ─────
+// setInterval 1本でズレを防ぐ
+function toggleAuto() { initSpeech(); if (running) stopAuto(); else startAuto(); }
+
+function startAuto() {
+running = true;
+document.getElementById(‘bmain’).textContent = ‘■ 自動読み上げ 停止’;
+document.getElementById(‘bmain’).className = ‘bmain active’;
+document.getElementById(‘tst’).textContent = ‘10秒ごとに更新中’;
+
+doFetch();       // 即時1回
+startCountdown();
+
+// setInterval で正確10秒ループ
+mainInterval = setInterval(function() {
+if (!running) return;
+doFetch();
+startCountdown();
+}, 10000);
+}
+
+function stopAuto() {
+running = false;
+clearInterval(mainInterval); mainInterval = null;
+clearInterval(cntTmr); cntTmr = null;
+document.getElementById(‘bmain’).textContent = ‘▶ 自動読み上げ 開始’;
+document.getElementById(‘bmain’).className = ‘bmain’;
+document.getElementById(‘tst’).textContent = ‘停止中’;
+resetRing();
+}
+
+function startCountdown() {
+clearInterval(cntTmr);
+cd = 10; updateRing();
+cntTmr = setInterval(function() {
+cd–;
+if (cd < 0) cd = 0;
+updateRing();
+if (cd <= 0) clearInterval(cntTmr);
+}, 1000);
+}
+
+function updateRing() {
+var p = document.getElementById(‘rprg’), n = document.getElementById(‘rn’);
+n.textContent = cd;
+p.style.strokeDashoffset = CIRC * (1 - cd / 10);
+var hot = cd <= 3;
+p.style.stroke = hot ? ‘var(–red)’ : ‘var(–green)’;
+n.style.color = hot ? ‘var(–red)’ : ‘var(–green)’;
+}
+function resetRing() {
+var p = document.getElementById(‘rprg’), n = document.getElementById(‘rn’);
+n.textContent = ‘10’; n.style.color = ‘var(–green)’;
+p.style.strokeDashoffset = 0; p.style.stroke = ‘var(–green)’;
+}
+
+// ───── 履歴ログ ─────
+function addLog(rate, diff) {
+var list = document.getElementById(‘llist’);
+if (list.children.length === 1 && list.children[0].style.justifyContent === ‘center’) list.innerHTML = ‘’;
+while (list.children.length >= 12) list.removeChild(list.lastChild);
+var now = new Date().toLocaleTimeString(‘ja-JP’, {hour:‘2-digit’, minute:‘2-digit’, second:‘2-digit’});
+var cls = ‘nc’, dstr = ‘’;
+if (diff !== null) {
+dstr = (diff >= 0 ? ‘+’ : ‘’) + diff.toFixed(3);
+cls = diff > 0.001 ? ‘up’ : diff < -0.001 ? ‘dn’ : ‘nc’;
+}
+var dcol = cls === ‘up’ ? ‘var(–green)’ : cls === ‘dn’ ? ‘var(–red)’ : ‘var(–dim)’;
+var item = document.createElement(‘div’); item.className = ‘litem’;
+item.innerHTML = ‘<span class="ltm">’ + now + ‘</span><span class="lrt ' + cls + '">’ + rate.toFixed(3) + ‘</span><span class="ldf" style="color:' + dcol + '">’ + dstr + ‘</span>’;
+list.insertBefore(item, list.firstChild);
+}
+
+function showErr(m) { document.getElementById(‘errmsg’).textContent = m; }
+function clearErr() { document.getElementById(‘errmsg’).textContent = ‘’; }
+
+// ───── iOS バックグラウンド復帰対策 ─────
+// Page Visibility API: タブ復帰時に speechSynthesis をリセット
+document.addEventListener(‘visibilitychange’, function() {
+if (!document.hidden && running) {
+// 画面復帰時に音声エンジンをリフレッシュ
+if (window.speechSynthesis) {
+window.speechSynthesis.cancel();
+isSpeaking = false;
+speakQueue = [];
+}
+}
+});
+
+// pageshow (iOS bfcache 復帰)
+window.addEventListener(‘pageshow’, function(e) {
+if (e.persisted && running) {
+if (window.speechSynthesis) {
+window.speechSynthesis.cancel();
+isSpeaking = false;
+speakQueue = [];
+}
+}
+});
 </script>
+
 </body>
 </html>
