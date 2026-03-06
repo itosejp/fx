@@ -4,93 +4,106 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>ドル円 読み上げ</title>
 <style>
-:root {
-  --bg:#080810; --sf:#10101a; --sf2:#16162a;
-  --green:#00e5a0; --blue:#00b8ff;
-  --red:#ff4560; --yellow:#ffb300;
-  --txt:#e8e8f2; --dim:#4a4a6a; --bd:#1a1a2e;
-}
+:root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{
-  background:var(--bg);color:var(--txt);
-  font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
-  min-height:100vh;display:flex;flex-direction:column;align-items:center;
-}
-.wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
-.hdr{text-align:center;padding:4px 0 8px}
-.hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
-.hdr-t{font-size:20px;letter-spacing:3px;color:var(--txt);opacity:.35;font-weight:300}
-.rcard{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:20px 16px 16px;text-align:center;transition:border-color .4s,box-shadow .4s}
-.rcard.bull{border-color:rgba(0,229,160,.5);box-shadow:0 0 24px rgba(0,229,160,.1)}
-.rcard.bear{border-color:rgba(255,69,96,.5);box-shadow:0 0 24px rgba(255,69,96,.1)}
-.pair{font-size:10px;letter-spacing:4px;color:var(--dim);margin-bottom:6px}
-.rnum{font-size:64px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--green);transition:color .3s}
+body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.wrap{width:100%;max-width:440px;padding:12px 12px 48px;display:flex;flex-direction:column;gap:8px}
+.hdr{text-align:center;padding:2px 0 6px}
+.hdr-s{font-size:9px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
+.hdr-t{font-size:18px;letter-spacing:3px;color:var(--txt);opacity:.3;font-weight:300}
+.rcard{background:var(--sf);border:1px solid var(--bd);border-radius:16px;padding:16px 14px 12px;text-align:center;transition:border-color .4s,box-shadow .4s}
+.rcard.bull{border-color:rgba(0,184,255,.5);box-shadow:0 0 20px rgba(0,184,255,.1)}
+.rcard.bear{border-color:rgba(255,69,96,.5);box-shadow:0 0 20px rgba(255,69,96,.1)}
+.pair{font-size:9px;letter-spacing:4px;color:var(--dim);margin-bottom:4px}
+.rnum{font-size:60px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--green);transition:color .3s}
 .rnum.bear{color:var(--red)}
 .rnum.loading{color:var(--dim)}
-.rdec{font-size:34px;opacity:.75}
-.badges{display:flex;justify-content:center;gap:8px;margin-top:8px;flex-wrap:wrap;min-height:24px}
-.badge{padding:3px 10px;border-radius:16px;font-size:12px;font-weight:700;display:none}
+.rdec{font-size:30px;opacity:.75}
+.badges{display:flex;justify-content:center;gap:6px;margin-top:6px;flex-wrap:wrap;min-height:22px}
+.badge{padding:2px 8px;border-radius:12px;font-size:11px;font-weight:700;display:none}
 .badge.show{display:inline-block}
-.bchg.up{background:rgba(0,229,160,.15);color:var(--green)}
+.bchg.up{background:rgba(0,184,255,.15);color:var(--blue)}
 .bchg.dn{background:rgba(255,69,96,.15);color:var(--red)}
 .bchg.nc{background:rgba(74,74,106,.2);color:var(--dim)}
-.bsrg{background:rgba(255,179,0,.18);color:var(--yellow);font-size:13px}
-.hacard{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
-.ha-l{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:4px}
-.ha-v{font-size:17px;font-weight:700;color:var(--dim)}
-.ha-v.bull{color:var(--green)}
+.bsrg{background:rgba(255,179,0,.18);color:var(--yellow)}
+
+/* Chart */
+.chartcard{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.chart-hdr{display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid var(--bd)}
+.chart-title{font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase}
+.tf-btns{display:flex;gap:4px}
+.tf-btn{padding:3px 7px;border-radius:6px;font-size:10px;font-weight:700;border:1px solid var(--bd);background:transparent;color:var(--dim);cursor:pointer;font-family:inherit}
+.tf-btn.active{background:var(--blue);color:#080810;border-color:var(--blue)}
+canvas#chart{width:100%;height:160px;display:block}
+
+/* HA card */
+.hacard{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between}
+.ha-l{font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;margin-bottom:3px}
+.ha-v{font-size:16px;font-weight:700;color:var(--dim)}
+.ha-v.bull{color:var(--blue)}
 .ha-v.bear{color:var(--red)}
-.sbar{display:flex;align-items:flex-end;gap:3px;height:18px;opacity:0;transition:opacity .3s}
+.sbar{display:flex;align-items:flex-end;gap:3px;height:16px;opacity:0;transition:opacity .3s}
 .sbar.on{opacity:1}
 .sb{width:3px;border-radius:2px;background:var(--blue);animation:sd .45s ease-in-out infinite alternate}
-.sb:nth-child(1){height:6px;animation-delay:0s}
-.sb:nth-child(2){height:13px;animation-delay:.08s}
-.sb:nth-child(3){height:10px;animation-delay:.16s}
-.sb:nth-child(4){height:18px;animation-delay:.12s}
-.sb:nth-child(5){height:8px;animation-delay:.04s}
+.sb:nth-child(1){height:5px;animation-delay:0s}
+.sb:nth-child(2){height:11px;animation-delay:.08s}
+.sb:nth-child(3){height:9px;animation-delay:.16s}
+.sb:nth-child(4){height:16px;animation-delay:.12s}
+.sb:nth-child(5){height:7px;animation-delay:.04s}
 @keyframes sd{from{transform:scaleY(.3);opacity:.4}to{transform:scaleY(1);opacity:1}}
-.trow{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px}
-.ring{position:relative;width:42px;height:42px;flex-shrink:0}
-.rsvg{width:42px;height:42px;transform:rotate(-90deg)}
+
+/* Timer */
+.trow{background:var(--sf);border:1px solid var(--bd);border-radius:12px;padding:9px 12px;display:flex;align-items:center;gap:10px}
+.ring{position:relative;width:38px;height:38px;flex-shrink:0}
+.rsvg{width:38px;height:38px;transform:rotate(-90deg)}
 .rtrk{fill:none;stroke:var(--bd);stroke-width:3}
-.rprg{fill:none;stroke:var(--green);stroke-width:3;stroke-linecap:round;stroke-dasharray:113;transition:stroke-dashoffset 1s linear,stroke .3s}
-.rn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;font-weight:900;color:var(--green);line-height:1;transition:color .3s}
-.tlbl{font-size:10px;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
-.tst{font-size:13px;color:var(--txt);margin-top:2px}
-.sett{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
-.shdr{padding:10px 14px;border-bottom:1px solid var(--bd);font-size:11px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
-.sbody{padding:13px;display:flex;flex-direction:column;gap:11px}
+.rprg{fill:none;stroke:var(--green);stroke-width:3;stroke-linecap:round;stroke-dasharray:101;transition:stroke-dashoffset 1s linear,stroke .3s}
+.rn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:14px;font-weight:900;color:var(--green);line-height:1;transition:color .3s}
+.tlbl{font-size:9px;letter-spacing:1px;color:var(--dim);text-transform:uppercase}
+.tst{font-size:12px;color:var(--txt);margin-top:1px}
+
+/* Settings */
+.sett{background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.shdr{padding:9px 12px;border-bottom:1px solid var(--bd);font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none}
+.sbody{padding:11px;display:flex;flex-direction:column;gap:9px}
 .sbody.hid{display:none}
 .srow{display:flex;align-items:center;justify-content:space-between;gap:8px}
-.slbl{font-size:12px;color:var(--txt);opacity:.8;flex:1}
-.sinp{width:100px;padding:7px 10px;background:var(--sf2);border:1px solid var(--bd);border-radius:8px;color:var(--txt);font-size:13px;text-align:right;font-family:inherit}
+.slbl{font-size:11px;color:var(--txt);opacity:.8;flex:1}
+.sinp{width:110px;padding:6px 9px;background:var(--sf2);border:1px solid var(--bd);border-radius:7px;color:var(--txt);font-size:12px;text-align:right;font-family:inherit}
 .sinp:focus{outline:none;border-color:var(--green)}
-.lcard{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
-.lhdr{padding:9px 14px;border-bottom:1px solid var(--bd);font-size:10px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
-.ldot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pd 2s infinite}
+
+/* Log */
+.lcard{background:var(--sf);border:1px solid var(--bd);border-radius:12px;overflow:hidden}
+.lhdr{padding:8px 12px;border-bottom:1px solid var(--bd);font-size:9px;letter-spacing:2px;color:var(--dim);text-transform:uppercase;display:flex;justify-content:space-between;align-items:center}
+.ldot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pd 2s infinite}
 @keyframes pd{0%,100%{opacity:1}50%{opacity:.3}}
-.llist{max-height:110px;overflow-y:auto}
-.litem{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid rgba(26,26,46,.5);font-size:12px}
-.ltm{color:var(--dim);font-size:10px}
-.lrt{font-size:17px;font-weight:900}
-.lrt.up{color:var(--green)} .lrt.dn{color:var(--red)} .lrt.nc{color:var(--txt)}
-.ldf{font-size:11px;min-width:50px;text-align:right}
-.bmain{width:100%;padding:16px;background:linear-gradient(135deg,#00e5a0,#00c87a);border:none;border-radius:14px;color:#080810;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer}
+.llist{max-height:90px;overflow-y:auto}
+.litem{display:flex;justify-content:space-between;align-items:center;padding:6px 12px;border-bottom:1px solid rgba(26,26,46,.5);font-size:11px}
+.ltm{color:var(--dim);font-size:9px}
+.lrt{font-size:15px;font-weight:900}
+.lrt.up{color:var(--blue)}.lrt.dn{color:var(--red)}.lrt.nc{color:var(--txt)}
+.ldf{font-size:10px;min-width:48px;text-align:right}
+
+/* Buttons */
+.bmain{width:100%;padding:14px;background:linear-gradient(135deg,#00e5a0,#00c87a);border:none;border-radius:13px;color:#080810;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer}
 .bmain.active{background:linear-gradient(135deg,#1a1a2e,#222240);color:var(--red);border:1px solid rgba(255,69,96,.3)}
-.bonce{width:100%;padding:12px;background:transparent;border:1px solid var(--bd);border-radius:13px;color:var(--txt);font-family:inherit;font-size:13px;font-weight:300;letter-spacing:1px;cursor:pointer}
-.err{color:var(--red);font-size:11px;text-align:center;min-height:14px;padding:0 8px}
-.note{font-size:11px;color:var(--dim);text-align:center;line-height:1.8}
+.bonce{width:100%;padding:10px;background:transparent;border:1px solid var(--bd);border-radius:12px;color:var(--txt);font-family:inherit;font-size:12px;font-weight:300;letter-spacing:1px;cursor:pointer}
+.err{color:var(--red);font-size:10px;text-align:center;min-height:13px;padding:0 8px}
+.note{font-size:10px;color:var(--dim);text-align:center;line-height:1.8}
 .note b{color:var(--yellow)}
 </style>
 </head>
 <body>
 <div class="wrap">
+
 <div class="hdr">
   <div class="hdr-s">Live Forex</div>
   <div class="hdr-t">ドル円 読み上げ</div>
 </div>
+
 <div class="rcard" id="rcard">
   <div class="pair">USD / JPY</div>
   <div class="rnum loading" id="rnum">---<span class="rdec">.---</span></div>
@@ -99,9 +112,24 @@ body{
     <div class="badge bsrg" id="bsrg"></div>
   </div>
 </div>
+
+<div class="chartcard">
+  <div class="chart-hdr">
+    <div class="chart-title">平均足 + EMA20</div>
+    <div class="tf-btns">
+      <button class="tf-btn" onclick="setTF(1)">1m</button>
+      <button class="tf-btn active" id="tf5" onclick="setTF(5)">5m</button>
+      <button class="tf-btn" onclick="setTF(15)">15m</button>
+      <button class="tf-btn" onclick="setTF(60)">1h</button>
+      <button class="tf-btn" onclick="setTF(240)">4h</button>
+    </div>
+  </div>
+  <canvas id="chart"></canvas>
+</div>
+
 <div class="hacard">
   <div>
-    <div class="ha-l">平均足（HA）判定</div>
+    <div class="ha-l">平均足シグナル</div>
     <div class="ha-v" id="hav">データ収集中...</div>
   </div>
   <div class="sbar" id="sbar">
@@ -109,11 +137,12 @@ body{
     <div class="sb"></div><div class="sb"></div>
   </div>
 </div>
+
 <div class="trow">
   <div class="ring">
-    <svg class="rsvg" viewBox="0 0 42 42">
-      <circle class="rtrk" cx="21" cy="21" r="18"/>
-      <circle class="rprg" id="rprg" cx="21" cy="21" r="18"/>
+    <svg class="rsvg" viewBox="0 0 38 38">
+      <circle class="rtrk" cx="19" cy="19" r="16"/>
+      <circle class="rprg" id="rprg" cx="19" cy="19" r="16"/>
     </svg>
     <div class="rn" id="rn">10</div>
   </div>
@@ -122,263 +151,94 @@ body{
     <div class="tst" id="tst">待機中</div>
   </div>
 </div>
+
 <div class="sett">
-  <div class="shdr" id="shdr">
-    <span>設定</span><span id="sarr">▼</span>
-  </div>
+  <div class="shdr" id="shdr"><span>設定</span><span id="sarr">▼</span></div>
   <div class="sbody hid" id="sbody">
     <div class="srow">
       <div class="slbl">急騰・急落の閾値（円）</div>
       <input class="sinp" id="thresh" type="number" step="0.01" value="0.03" min="0.01">
     </div>
     <div class="srow">
-      <div class="slbl">平均足 連続判定本数</div>
-      <select class="sinp" id="hacount">
-        <option value="2">2本</option>
-        <option value="3" selected>3本</option>
-        <option value="5">5本</option>
+      <div class="slbl">平均足の時間足</div>
+      <select class="sinp" id="haTF" onchange="onHaTFChange()">
+        <option value="1">1分足</option>
+        <option value="5" selected>5分足</option>
+        <option value="15">15分足</option>
+        <option value="60">1時間足</option>
+        <option value="240">4時間足</option>
+      </select>
+    </div>
+    <div class="srow">
+      <div class="slbl">読み上げ間隔（秒）</div>
+      <select class="sinp" id="interval">
+        <option value="10" selected>10秒</option>
+        <option value="30">30秒</option>
+        <option value="60">60秒</option>
       </select>
     </div>
   </div>
 </div>
+
 <div class="lcard">
-  <div class="lhdr">
-    <span>更新履歴</span>
-    <div class="ldot"></div>
-  </div>
+  <div class="lhdr"><span>更新履歴</span><div class="ldot"></div></div>
   <div class="llist" id="llist">
     <div class="litem" style="color:var(--dim);justify-content:center">開始ボタンを押してください</div>
   </div>
 </div>
+
 <button class="bmain" id="bmain" onclick="toggleAuto()">▶ 自動読み上げ 開始</button>
 <button class="bonce" onclick="doOnce()">今すぐ1回読み上げ</button>
 <div class="err" id="errmsg"></div>
 <div class="note" id="note"><b>最初に「自動読み上げ 開始」をタップ</b><br>すると音声が有効になります</div>
+
 </div>
 <script>
+// ==============================
+// STATE
+// ==============================
 var running = false;
 var nextTmr = null;
-var cntTmr = null;
+var cntTmr  = null;
 var cd = 10;
 var lastRate = null;
-var rawC = [];
-var haC = [];
-var spReady = false;
-var CIRC = 113;
-var KANA = ['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+var spReady  = false;
+var prevHaSig = null;
+var audioCtx  = null;
 
-function rateText(rate) {
-  var s = rate.toFixed(3);
-  var parts = s.split('.');
-  var int = parts[0];
-  var dec = parts[1];
-  var r = '';
-  for (var i = 0; i < int.length; i++) { r += KANA[parseInt(int[i])]; }
-  r += ' てん ';
-  for (var j = 0; j < dec.length; j++) { r += KANA[parseInt(dec[j])]; }
-  return r;
-}
+// tick buffer per TF (keyed by minutes)
+var tickBuffers = {1:[],5:[],15:[],60:[],240:[]};
+var candleMap   = {1:[],5:[],15:[],60:[],240:[]};
+var haMap       = {1:[],5:[],15:[],60:[],240:[]};
 
-function fetchRate(cb) {
-  var x = new XMLHttpRequest();
-  x.open('GET', 'https://papi.gaitame.com/v1/quotes/all', true);
-  x.timeout = 6000;
-  x.onreadystatechange = function() {
-    if (x.readyState === 4) {
-      if (x.status === 200) {
-        try {
-          var d = JSON.parse(x.responseText);
-          var v = null;
-          if (d && d.usdjpy) { v = d.usdjpy.ask || d.usdjpy.bid; }
-          if (!v && d && d.USDJPY) { v = d.USDJPY.ask || d.USDJPY.bid; }
-          if (!v && Array.isArray(d)) {
-            for (var i = 0; i < d.length; i++) {
-              if (d[i].currencyPair === 'USDJPY' || d[i].symbol === 'USDJPY') {
-                v = d[i].ask || d[i].bid; break;
-              }
-            }
-          }
-          if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
-        } catch(e) {}
-      }
-      fetchRateA(cb);
-    }
-  };
-  x.ontimeout = function() { fetchRateA(cb); };
-  x.onerror   = function() { fetchRateA(cb); };
-  x.send();
-}
+var chartTF = 5;   // chart display TF
+var haTF    = 5;   // HA signal TF
 
-function fetchRateA(cb) {
-  var done = false, cbName = 'fxa' + Date.now(), el = null;
-  var tid = setTimeout(function() {
-    if (done) { return; } done = true;
-    window[cbName] = null;
-    if (el && el.parentNode) { el.parentNode.removeChild(el); }
-    fetchRateB(cb);
-  }, 8000);
-  window[cbName] = function(data) {
-    if (done) { return; } done = true;
-    clearTimeout(tid); window[cbName] = null;
-    if (el && el.parentNode) { el.parentNode.removeChild(el); }
-    try {
-      var v = data && data.rates && data.rates.JPY;
-      if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
-    } catch(e) {}
-    fetchRateB(cb);
-  };
-  el = document.createElement('script');
-  el.src = 'https://api.exchangerate-api.com/v4/latest/USD?callback=' + cbName;
-  el.onerror = function() {
-    if (done) { return; } done = true;
-    clearTimeout(tid); window[cbName] = null; fetchRateB(cb);
-  };
-  document.head.appendChild(el);
-}
+var CIRC = 101;    // 2*pi*16 ≈ 101
 
-function fetchRateB(cb) {
-  var done = false, cbName = 'fxb' + Date.now(), el = null;
-  var tid = setTimeout(function() {
-    if (done) { return; } done = true;
-    window[cbName] = null;
-    if (el && el.parentNode) { el.parentNode.removeChild(el); }
-    fetchRateC(cb);
-  }, 8000);
-  window[cbName] = function(data) {
-    if (done) { return; } done = true;
-    clearTimeout(tid); window[cbName] = null;
-    if (el && el.parentNode) { el.parentNode.removeChild(el); }
-    try {
-      var v = data && data.rates && data.rates.JPY;
-      if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
-    } catch(e) {}
-    fetchRateC(cb);
-  };
-  el = document.createElement('script');
-  el.src = 'https://open.er-api.com/v6/latest/USD?callback=' + cbName;
-  el.onerror = function() {
-    if (done) { return; } done = true;
-    clearTimeout(tid); window[cbName] = null; fetchRateC(cb);
-  };
-  document.head.appendChild(el);
-}
+var KANA = ['ぜろ','いち','に','さん','よん','ごう','ろく','なな','はち','きゅう'];
 
-function fetchRateC(cb) {
-  var x = new XMLHttpRequest();
-  x.open('GET', 'https://api.frankfurter.app/latest?from=USD&to=JPY', true);
-  x.timeout = 8000;
-  x.onreadystatechange = function() {
-    if (x.readyState === 4) {
-      if (x.status === 200) {
-        try {
-          var d = JSON.parse(x.responseText);
-          var v = d.rates && d.rates.JPY;
-          if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
-        } catch(e) {}
-      }
-      cb('全API失敗', null);
-    }
-  };
-  x.ontimeout = function() { cb('タイムアウト', null); };
-  x.onerror   = function() { cb('ネットワークエラー', null); };
-  x.send();
-}
-
-
-function addTick(rate) {
-  var prev = rawC.length ? rawC[rawC.length-1] : null;
-  var o = prev ? prev.c : rate;
-  var noise = 0.01;
-  var h = Math.max(o, rate) + Math.random() * noise;
-  var l = Math.min(o, rate) - Math.random() * noise;
-  rawC.push({o:o, h:h, l:l, c:rate});
-  haC = [];
-  for (var i = 0; i < rawC.length; i++) {
-    var raw = rawC[i];
-    var hac = (raw.o + raw.h + raw.l + raw.c) / 4;
-    var hao = i === 0 ? (raw.o + raw.c) / 2 : (haC[i-1].o + haC[i-1].c) / 2;
-    var hah = Math.max(raw.h, hao, hac);
-    var hal = Math.min(raw.l, hao, hac);
-    haC.push({o:hao, h:hah, l:hal, c:hac});
-  }
-}
-
-function getSignal() {
-  var n = parseInt(document.getElementById('hacount').value) || 3;
-  if (haC.length < n) { return null; }
-  var slice = haC.slice(-n);
-  var bull = true, bear = true;
-  for (var i = 0; i < slice.length; i++) {
-    if (slice[i].c <= slice[i].o) { bull = false; }
-    if (slice[i].c >= slice[i].o) { bear = false; }
-  }
-  if (bull) { return 'bull'; }
-  if (bear) { return 'bear'; }
-  return 'neutral';
-}
-
-function doFetch() {
-  clearErr();
-  fetchRate(function(err, rate) {
-    if (err || rate === null) {
-      showErr('取得失敗: ' + (err || 'null'));
-      return;
-    }
-    var prev = lastRate;
-    addTick(rate);
-    updateDisplay(rate, prev);
-    updateHA();
-    addLog(rate, prev);
-    lastRate = rate;
-    speakAll(rate, prev);
-  });
-}
-
-function doOnce() { initSpeech(); doFetch(); }
-
-function updateDisplay(rate, prev) {
-  var card = document.getElementById('rcard');
-  var el   = document.getElementById('rnum');
-  var bc   = document.getElementById('bchg');
-  var bs   = document.getElementById('bsrg');
-  var s = rate.toFixed(3).split('.');
-  el.innerHTML = s[0] + '<span class="rdec">.' + s[1] + '</span>';
-  el.className = 'rnum';
-  card.className = 'rcard';
-  if (prev !== null) {
-    var diff = rate - prev;
-    var sign = diff >= 0 ? '+' : '';
-    var arrow = diff > 0.001 ? '↑' : diff < -0.001 ? '↓' : '→';
-    bc.textContent = arrow + ' ' + sign + diff.toFixed(3) + ' 円';
-    var cls = diff > 0.001 ? 'up' : diff < -0.001 ? 'dn' : 'nc';
-    bc.className = 'badge bchg ' + cls + ' show';
-    if (diff > 0.001) { card.className = 'rcard bull'; }
-    else if (diff < -0.001) { el.className = 'rnum bear'; card.className = 'rcard bear'; }
-    var thr = parseFloat(document.getElementById('thresh').value) || 0.03;
-    if (Math.abs(diff) >= thr) {
-      bs.textContent = diff > 0 ? '急騰！' : '急落！';
-      bs.className = 'badge bsrg show';
-      setTimeout(function() { bs.className = 'badge bsrg'; }, 8000);
-    }
-  }
-}
-
-function updateHA() {
-  var sig = getSignal();
-  var el = document.getElementById('hav');
-  var n  = parseInt(document.getElementById('hacount').value) || 3;
-  var have = Math.min(haC.length, n);
-  if (sig === 'bull') { el.textContent = '▲ 陽線（上昇）' + have + '本連続'; el.className = 'ha-v bull'; }
-  else if (sig === 'bear') { el.textContent = '▼ 陰線（下降）' + have + '本連続'; el.className = 'ha-v bear'; }
-  else if (sig === 'neutral') { el.textContent = '━ 中立'; el.className = 'ha-v'; }
-  else { el.textContent = 'データ収集中 ' + haC.length + '/' + n + '本'; el.className = 'ha-v'; }
-}
-
+// ==============================
+// SPEECH
+// ==============================
 function initSpeech() {
-  if (spReady || !window.speechSynthesis) { return; }
-  var u = new SpeechSynthesisUtterance('');
-  u.volume = 0; u.lang = 'ja-JP';
-  window.speechSynthesis.speak(u);
+  if (spReady) { return; }
+  // Wake iOS audio
+  if (!audioCtx) {
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      var buf = audioCtx.createBuffer(1,1,22050);
+      var src = audioCtx.createBufferSource();
+      src.buffer = buf;
+      src.connect(audioCtx.destination);
+      src.start(0);
+    } catch(e) {}
+  }
+  if (window.speechSynthesis) {
+    var u = new SpeechSynthesisUtterance('');
+    u.volume = 0; u.lang = 'ja-JP';
+    window.speechSynthesis.speak(u);
+  }
   spReady = true;
   document.getElementById('note').style.display = 'none';
 }
@@ -387,18 +247,30 @@ function speak(text) {
   if (!window.speechSynthesis) { return; }
   window.speechSynthesis.cancel();
   var u = new SpeechSynthesisUtterance(text);
-  u.lang = 'ja-JP'; u.rate = 0.85; u.pitch = 1.0; u.volume = 1.0;
+  u.lang = 'ja-JP'; u.rate = 0.88; u.pitch = 1.0; u.volume = 1.0;
   var bar = document.getElementById('sbar');
   u.onstart = function() { bar.className = 'sbar on'; };
   u.onend   = function() { bar.className = 'sbar'; };
   u.onerror = function() { bar.className = 'sbar'; };
+  // Resume to prevent iOS stall
+  if (audioCtx && audioCtx.state === 'suspended') { audioCtx.resume(); }
   window.speechSynthesis.resume();
   window.speechSynthesis.speak(u);
+  // Kick every 5s to prevent iOS 15+ stall
   var kick = setInterval(function() {
     if (!window.speechSynthesis.speaking) { clearInterval(kick); return; }
     window.speechSynthesis.pause();
     window.speechSynthesis.resume();
   }, 5000);
+}
+
+function rateText(rate) {
+  var s = rate.toFixed(3).split('.');
+  var r = '';
+  for (var i = 0; i < s[0].length; i++) { r += KANA[parseInt(s[0][i])]; }
+  r += ' てん ';
+  for (var j = 0; j < s[1].length; j++) { r += KANA[parseInt(s[1][j])]; }
+  return r;
 }
 
 function speakAll(rate, prev) {
@@ -409,12 +281,345 @@ function speakAll(rate, prev) {
     if (diff >= thr)       { prefix = '急騰です。'; }
     else if (diff <= -thr) { prefix = '急落です。'; }
   }
-  var sig = getSignal();
-  var suffix = '';
-  if      (sig === 'bull') { suffix = '。平均足は陽線です'; }
-  else if (sig === 'bear') { suffix = '。平均足は陰線です'; }
-  speak(prefix + rateText(rate) + suffix);
+  var sig = getHaSignal(haTF);
+  var haText = '';
+  if (sig !== null) {
+    var changed = (prevHaSig !== null && sig !== prevHaSig);
+    if (changed) {
+      haText = sig === 'bull' ? '。あおにかわりました' : '。あかにかわりました';
+    } else {
+      haText = sig === 'bull' ? '。あお' : '。あか';
+    }
+  }
+  prevHaSig = sig;
+  speak(prefix + rateText(rate) + haText);
 }
+
+// ==============================
+// API FETCH (4段フォールバック)
+// ==============================
+function fetchRate(cb) {
+  var x = new XMLHttpRequest();
+  x.open('GET','https://papi.gaitame.com/v1/quotes/all',true);
+  x.timeout = 6000;
+  x.onreadystatechange = function() {
+    if (x.readyState !== 4) { return; }
+    if (x.status === 200) {
+      try {
+        var d = JSON.parse(x.responseText);
+        var v = null;
+        if (d && d.usdjpy) { v = d.usdjpy.ask || d.usdjpy.bid; }
+        if (!v && d && d.USDJPY) { v = d.USDJPY.ask || d.USDJPY.bid; }
+        if (!v && Array.isArray(d)) {
+          for (var i = 0; i < d.length; i++) {
+            if (d[i].currencyPair==='USDJPY'||d[i].symbol==='USDJPY') {
+              v = d[i].ask||d[i].bid; break;
+            }
+          }
+        }
+        if (v && v > 50 && v < 300) { cb(null,parseFloat(v)); return; }
+      } catch(e) {}
+    }
+    fetchRateA(cb);
+  };
+  x.ontimeout = function() { fetchRateA(cb); };
+  x.onerror   = function() { fetchRateA(cb); };
+  x.send();
+}
+
+function jsonpFetch(url, onSuccess, onFail, parseFunc) {
+  var done = false;
+  var cbName = '_fx' + Date.now() + Math.floor(Math.random()*1000);
+  var el = null;
+  var tid = setTimeout(function() {
+    if (done) { return; } done = true;
+    window[cbName] = null;
+    if (el && el.parentNode) { el.parentNode.removeChild(el); }
+    onFail();
+  }, 8000);
+  window[cbName] = function(data) {
+    if (done) { return; } done = true;
+    clearTimeout(tid); window[cbName] = null;
+    if (el && el.parentNode) { el.parentNode.removeChild(el); }
+    try {
+      var v = parseFunc(data);
+      if (v && v > 50 && v < 300) { onSuccess(parseFloat(v)); return; }
+    } catch(e) {}
+    onFail();
+  };
+  el = document.createElement('script');
+  el.src = url + cbName;
+  el.onerror = function() {
+    if (done) { return; } done = true;
+    clearTimeout(tid); window[cbName] = null; onFail();
+  };
+  document.head.appendChild(el);
+}
+
+function fetchRateA(cb) {
+  jsonpFetch(
+    'https://api.exchangerate-api.com/v4/latest/USD?callback=',
+    function(v) { cb(null, v); },
+    function()  { fetchRateB(cb); },
+    function(d) { return d && d.rates && d.rates.JPY; }
+  );
+}
+
+function fetchRateB(cb) {
+  jsonpFetch(
+    'https://open.er-api.com/v6/latest/USD?callback=',
+    function(v) { cb(null, v); },
+    function()  { fetchRateC(cb); },
+    function(d) { return d && d.rates && d.rates.JPY; }
+  );
+}
+
+function fetchRateC(cb) {
+  var x = new XMLHttpRequest();
+  x.open('GET','https://api.frankfurter.app/latest?from=USD&to=JPY',true);
+  x.timeout = 8000;
+  x.onreadystatechange = function() {
+    if (x.readyState !== 4) { return; }
+    if (x.status === 200) {
+      try {
+        var d = JSON.parse(x.responseText);
+        var v = d.rates && d.rates.JPY;
+        if (v && v > 50 && v < 300) { cb(null,parseFloat(v)); return; }
+      } catch(e) {}
+    }
+    cb('全API失敗', null);
+  };
+  x.ontimeout = function() { cb('タイムアウト',null); };
+  x.onerror   = function() { cb('ネットワークエラー',null); };
+  x.send();
+}
+
+// ==============================
+// CANDLE / HA CALCULATION
+// ==============================
+var TF_TICKS = {1:6, 5:30, 15:90, 60:360, 240:1440};
+
+function addTickAllTF(rate) {
+  var tfs = [1,5,15,60,240];
+  for (var i = 0; i < tfs.length; i++) {
+    var tf = tfs[i];
+    tickBuffers[tf].push(rate);
+    var need = TF_TICKS[tf];
+    if (tickBuffers[tf].length >= need) {
+      var slice = tickBuffers[tf].splice(0, need);
+      var o = slice[0];
+      var c = slice[slice.length-1];
+      var h = Math.max.apply(null, slice);
+      var l = Math.min.apply(null, slice);
+      candleMap[tf].push({o:o,h:h,l:l,c:c});
+      if (candleMap[tf].length > 120) { candleMap[tf].shift(); }
+      calcHA(tf);
+    }
+  }
+}
+
+function calcHA(tf) {
+  var raw = candleMap[tf];
+  var ha  = [];
+  for (var i = 0; i < raw.length; i++) {
+    var r   = raw[i];
+    var hac = (r.o+r.h+r.l+r.c)/4;
+    var hao = i===0 ? (r.o+r.c)/2 : (ha[i-1].o+ha[i-1].c)/2;
+    var hah = Math.max(r.h,hao,hac);
+    var hal = Math.min(r.l,hao,hac);
+    ha.push({o:hao,h:hah,l:hal,c:hac});
+  }
+  haMap[tf] = ha;
+}
+
+function getHaSignal(tf) {
+  var ha = haMap[tf];
+  if (!ha || ha.length < 1) { return null; }
+  var last = ha[ha.length-1];
+  if (last.c > last.o) { return 'bull'; }
+  if (last.c < last.o) { return 'bear'; }
+  return 'neutral';
+}
+
+// ==============================
+// EMA CALCULATION
+// ==============================
+function calcEMA(closes, period) {
+  var k = 2/(period+1);
+  var ema = [];
+  for (var i = 0; i < closes.length; i++) {
+    if (i < period-1) { ema.push(null); continue; }
+    if (i === period-1) {
+      var sum = 0;
+      for (var j = 0; j < period; j++) { sum += closes[j]; }
+      ema.push(sum/period);
+    } else {
+      ema.push(closes[i]*k + ema[i-1]*(1-k));
+    }
+  }
+  return ema;
+}
+
+// ==============================
+// CHART DRAWING
+// ==============================
+function drawChart() {
+  var canvas = document.getElementById('chart');
+  var dpr = window.devicePixelRatio || 1;
+  var W = canvas.offsetWidth;
+  var H = 160;
+  canvas.width  = W * dpr;
+  canvas.height = H * dpr;
+  var ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  var ha = haMap[chartTF];
+  if (!ha || ha.length < 2) {
+    ctx.fillStyle = '#4a4a6a';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('データ収集中...', W/2, H/2);
+    return;
+  }
+
+  var N    = Math.min(ha.length, 60);
+  var data = ha.slice(-N);
+  var closes = data.map(function(c){ return c.c; });
+  var ema20  = calcEMA(closes, 20);
+
+  // Price range
+  var hi = -Infinity, lo = Infinity;
+  for (var i = 0; i < data.length; i++) {
+    if (data[i].h > hi) { hi = data[i].h; }
+    if (data[i].l < lo) { lo = data[i].l; }
+  }
+  var pad  = (hi-lo)*0.1 || 0.1;
+  hi += pad; lo -= pad;
+
+  var marginL = 6, marginR = 42, marginT = 8, marginB = 8;
+  var plotW = W - marginL - marginR;
+  var plotH = H - marginT - marginB;
+
+  function toX(i) { return marginL + (i+0.5)*(plotW/N); }
+  function toY(v) { return marginT + (1-(v-lo)/(hi-lo))*plotH; }
+
+  // Background
+  ctx.fillStyle = '#10101a';
+  ctx.fillRect(0, 0, W, H);
+
+  // Grid lines (3 horizontal)
+  ctx.strokeStyle = '#1a1a2e';
+  ctx.lineWidth = 0.5;
+  for (var g = 0; g <= 2; g++) {
+    var yg = marginT + (g/2)*plotH;
+    ctx.beginPath(); ctx.moveTo(marginL,yg); ctx.lineTo(W-marginR,yg); ctx.stroke();
+    var val = hi - (g/2)*(hi-lo);
+    ctx.fillStyle = '#4a4a6a';
+    ctx.font = '9px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(val.toFixed(2), W-marginR+3, yg+3);
+  }
+
+  // HA Candles
+  var cw = Math.max(2, (plotW/N)*0.7);
+  for (var i = 0; i < data.length; i++) {
+    var c  = data[i];
+    var x  = toX(i);
+    var bull = c.c >= c.o;
+    ctx.strokeStyle = bull ? '#00b8ff' : '#ff4560';
+    ctx.fillStyle   = bull ? '#00b8ff' : '#ff4560';
+    ctx.lineWidth   = 1;
+
+    // Wick
+    ctx.beginPath();
+    ctx.moveTo(x, toY(c.h));
+    ctx.lineTo(x, toY(c.l));
+    ctx.stroke();
+
+    // Body
+    var bodyTop = toY(Math.max(c.o,c.c));
+    var bodyBot = toY(Math.min(c.o,c.c));
+    var bodyH   = Math.max(1, bodyBot-bodyTop);
+    ctx.fillRect(x-cw/2, bodyTop, cw, bodyH);
+  }
+
+  // EMA20
+  ctx.strokeStyle = '#ffb300';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  var started = false;
+  for (var i = 0; i < ema20.length; i++) {
+    if (ema20[i] === null) { continue; }
+    var ex = toX(i), ey = toY(ema20[i]);
+    if (!started) { ctx.moveTo(ex,ey); started = true; }
+    else          { ctx.lineTo(ex,ey); }
+  }
+  ctx.stroke();
+}
+
+// ==============================
+// DISPLAY UPDATE
+// ==============================
+function updateDisplay(rate, prev) {
+  var card = document.getElementById('rcard');
+  var el   = document.getElementById('rnum');
+  var bc   = document.getElementById('bchg');
+  var bs   = document.getElementById('bsrg');
+  var s    = rate.toFixed(3).split('.');
+  el.innerHTML = s[0]+'<span class="rdec">.'+s[1]+'</span>';
+  el.className = 'rnum';
+  card.className = 'rcard';
+  if (prev !== null) {
+    var diff  = rate-prev;
+    var sign  = diff >= 0 ? '+' : '';
+    var arrow = diff > 0.001 ? '↑' : diff < -0.001 ? '↓' : '→';
+    bc.textContent = arrow+' '+sign+diff.toFixed(3)+' 円';
+    var cls = diff>0.001?'up':diff<-0.001?'dn':'nc';
+    bc.className = 'badge bchg '+cls+' show';
+    if      (diff > 0.001) { card.className = 'rcard bull'; }
+    else if (diff < -0.001){ el.className='rnum bear'; card.className='rcard bear'; }
+    var thr = parseFloat(document.getElementById('thresh').value)||0.03;
+    if (Math.abs(diff) >= thr) {
+      bs.textContent = diff>0?'急騰！':'急落！';
+      bs.className = 'badge bsrg show';
+      setTimeout(function(){ bs.className='badge bsrg'; },8000);
+    }
+  }
+}
+
+function updateHADisplay() {
+  var sig  = getHaSignal(haTF);
+  var el   = document.getElementById('hav');
+  var ha   = haMap[haTF];
+  var need = TF_TICKS[haTF];
+  var buf  = tickBuffers[haTF];
+  if (sig === 'bull')    { el.textContent='🔵 あお（陽線）'; el.className='ha-v bull'; }
+  else if (sig==='bear') { el.textContent='🔴 あか（陰線）'; el.className='ha-v bear'; }
+  else if (!ha || ha.length===0) {
+    var done = (ha ? ha.length : 0)*need + buf.length;
+    el.textContent='収集中 '+done+'/'+need+'回分'; el.className='ha-v';
+  } else { el.textContent='━ 中立'; el.className='ha-v'; }
+}
+
+// ==============================
+// MAIN FETCH LOOP
+// ==============================
+function doFetch() {
+  clearErr();
+  fetchRate(function(err, rate) {
+    if (err||rate===null) { showErr('取得失敗: '+(err||'null')); return; }
+    var prev = lastRate;
+    addTickAllTF(rate);
+    updateDisplay(rate, prev);
+    updateHADisplay();
+    drawChart();
+    addLog(rate, prev);
+    lastRate = rate;
+    speakAll(rate, prev);
+  });
+}
+
+function doOnce() { initSpeech(); doFetch(); }
 
 function toggleAuto() {
   initSpeech();
@@ -425,7 +630,8 @@ function startAuto() {
   running = true;
   document.getElementById('bmain').textContent = '■ 自動読み上げ 停止';
   document.getElementById('bmain').className = 'bmain active';
-  document.getElementById('tst').textContent = '10秒ごとに更新中';
+  var iv = parseInt(document.getElementById('interval').value)||10;
+  document.getElementById('tst').textContent = iv+'秒ごとに更新中';
   doFetch(); schedNext();
 }
 
@@ -440,66 +646,100 @@ function stopAuto() {
 
 function schedNext() {
   clearTimeout(nextTmr); clearInterval(cntTmr);
-  cd = 10; updateRing();
+  var iv = parseInt(document.getElementById('interval').value)||10;
+  cd = iv; updateRing();
   cntTmr = setInterval(function() {
     cd--; updateRing();
     if (cd <= 0) { clearInterval(cntTmr); }
   }, 1000);
   nextTmr = setTimeout(function() {
     if (running) { doFetch(); schedNext(); }
-  }, 10000);
+  }, iv*1000);
 }
 
 function updateRing() {
-  var p = document.getElementById('rprg');
-  var n = document.getElementById('rn');
+  var iv = parseInt(document.getElementById('interval').value)||10;
+  var p  = document.getElementById('rprg');
+  var n  = document.getElementById('rn');
   n.textContent = cd;
-  p.style.strokeDashoffset = CIRC * (1 - cd / 10);
+  p.style.strokeDashoffset = CIRC*(1-cd/iv);
   var hot = cd <= 3;
-  p.style.stroke = hot ? 'var(--red)' : 'var(--green)';
-  n.style.color  = hot ? 'var(--red)' : 'var(--green)';
+  p.style.stroke = hot?'var(--red)':'var(--green)';
+  n.style.color  = hot?'var(--red)':'var(--green)';
 }
 
 function resetRing() {
   var p = document.getElementById('rprg');
   var n = document.getElementById('rn');
-  n.textContent = '10'; n.style.color = 'var(--green)';
-  p.style.strokeDashoffset = 0; p.style.stroke = 'var(--green)';
+  n.textContent='10'; n.style.color='var(--green)';
+  p.style.strokeDashoffset=0; p.style.stroke='var(--green)';
 }
 
+// ==============================
+// CHART TF / HA TF
+// ==============================
+function setTF(tf) {
+  chartTF = tf;
+  var btns = document.querySelectorAll('.tf-btn');
+  var labels = ['1m','5m','15m','1h','4h'];
+  var tfs    = [1,5,15,60,240];
+  for (var i=0;i<btns.length;i++) {
+    btns[i].className = (tfs[i]===tf) ? 'tf-btn active' : 'tf-btn';
+  }
+  drawChart();
+}
+
+function onHaTFChange() {
+  haTF = parseInt(document.getElementById('haTF').value)||5;
+  prevHaSig = null;
+  updateHADisplay();
+}
+
+// ==============================
+// LOG
+// ==============================
 function addLog(rate, prev) {
   var list = document.getElementById('llist');
-  if (list.children.length === 1 && list.children[0].style.justifyContent === 'center') {
-    list.innerHTML = '';
+  if (list.children.length===1 && list.children[0].style.justifyContent==='center') {
+    list.innerHTML='';
   }
-  while (list.children.length >= 12) { list.removeChild(list.lastChild); }
-  var now = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-  var cls = 'nc', dstr = '';
-  if (prev !== null) {
-    var d = rate - prev;
-    dstr = (d >= 0 ? '+' : '') + d.toFixed(3);
-    cls = d > 0.001 ? 'up' : d < -0.001 ? 'dn' : 'nc';
+  while (list.children.length>=12) { list.removeChild(list.lastChild); }
+  var now = new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  var cls='nc', dstr='';
+  if (prev!==null) {
+    var d=rate-prev;
+    dstr=(d>=0?'+':'')+d.toFixed(3);
+    cls=d>0.001?'up':d<-0.001?'dn':'nc';
   }
-  var dcol = cls === 'up' ? 'var(--green)' : cls === 'dn' ? 'var(--red)' : 'var(--dim)';
-  var item = document.createElement('div');
-  item.className = 'litem';
-  item.innerHTML =
-    '<span class="ltm">' + now + '</span>' +
-    '<span class="lrt ' + cls + '">' + rate.toFixed(3) + '</span>' +
-    '<span class="ldf" style="color:' + dcol + '">' + dstr + '</span>';
-  list.insertBefore(item, list.firstChild);
+  var dcol=cls==='up'?'var(--blue)':cls==='dn'?'var(--red)':'var(--dim)';
+  var item=document.createElement('div');
+  item.className='litem';
+  item.innerHTML=
+    '<span class="ltm">'+now+'</span>'+
+    '<span class="lrt '+cls+'">'+rate.toFixed(3)+'</span>'+
+    '<span class="ldf" style="color:'+dcol+'">'+dstr+'</span>';
+  list.insertBefore(item,list.firstChild);
 }
 
+// ==============================
+// SETTINGS TOGGLE
+// ==============================
 function toggleSettings() {
-  var b = document.getElementById('sbody');
-  var a = document.getElementById('sarr');
-  if (b.className === 'sbody hid') { b.className = 'sbody'; a.textContent = '▲'; }
-  else { b.className = 'sbody hid'; a.textContent = '▼'; }
+  var b=document.getElementById('sbody');
+  var a=document.getElementById('sarr');
+  if (b.className==='sbody hid'){ b.className='sbody'; a.textContent='▲'; }
+  else { b.className='sbody hid'; a.textContent='▼'; }
 }
+document.getElementById('shdr').addEventListener('click',toggleSettings);
 
-document.getElementById('shdr').addEventListener('click', toggleSettings);
-function showErr(m) { document.getElementById('errmsg').textContent = m; }
-function clearErr()  { document.getElementById('errmsg').textContent = ''; }
+// ==============================
+// UTILS
+// ==============================
+function showErr(m){ document.getElementById('errmsg').textContent=m; }
+function clearErr(){ document.getElementById('errmsg').textContent=''; }
+
+// Initial chart draw
+drawChart();
 </script>
 </body>
 </html>
