@@ -316,78 +316,71 @@ function speakAll(rate, prev) {
 }
 
 // ==============================
-// API FETCH (4段フォールバック)
+// FINNHUB WEBSOCKET (リアルタイム)
 // ==============================
+var ws = null;
+var wsRate = null;
+var wsRetryTmr = null;
+
+function connectWS() {
+  if (ws) { try { ws.close(); } catch(e) {} }
+  ws = new WebSocket('wss://ws.finnhub.io?token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg');
+  ws.onopen = function() {
+    ws.send(JSON.stringify({type:'subscribe', symbol:'OANDA:USD_JPY'}));
+    clearErr();
+  };
+  ws.onmessage = function(e) {
+    try {
+      var d = JSON.parse(e.data);
+      if (d.type === 'trade' && d.data && d.data.length > 0) {
+        var v = d.data[d.data.length-1].p;
+        if (v && v > 50 && v < 300) {
+          wsRate = parseFloat(v);
+        }
+      }
+    } catch(ex) {}
+  };
+  ws.onerror = function() { showErr('WS接続エラー'); };
+  ws.onclose = function() {
+    // 5秒後に再接続
+    wsRetryTmr = setTimeout(connectWS, 5000);
+  };
+}
+
 function fetchRate(cb) {
-  // Yahoo Finance (数秒単位で更新)
+  // WebSocketで取得済みの価格を使う
+  if (wsRate !== null) {
+    cb(null, wsRate);
+    return;
+  }
+  // WS未接続ならREST fallback
+  fetchRateA(cb);
+}
+
+// ==============================
+// REST FALLBACK APIs
+// ==============================
+function fetchRateA(cb) {
   var x = new XMLHttpRequest();
-  x.open('GET','https://query1.finance.yahoo.com/v8/finance/chart/USDJPY=X?interval=1m&range=1d',true);
+  x.open('GET','https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',true);
   x.timeout = 6000;
   x.onreadystatechange = function() {
     if (x.readyState !== 4) { return; }
     if (x.status === 200) {
       try {
         var d = JSON.parse(x.responseText);
-        var meta = d.chart && d.chart.result && d.chart.result[0] && d.chart.result[0].meta;
-        var v = meta && (meta.regularMarketPrice || meta.previousClose);
+        var v = d && d.usd && d.usd.jpy;
         if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
       } catch(e) {}
     }
-    fetchRateA(cb);
+    fetchRateB(cb);
   };
-  x.ontimeout = function() { fetchRateA(cb); };
-  x.onerror   = function() { fetchRateA(cb); };
+  x.ontimeout = function() { fetchRateB(cb); };
+  x.onerror   = function() { fetchRateB(cb); };
   x.send();
 }
 
-function jsonpFetch(url, onSuccess, onFail, parseFunc) {
-  var done = false;
-  var cbName = '_fx' + Date.now() + Math.floor(Math.random()*1000);
-  var el = null;
-  var tid = setTimeout(function() {
-    if (done) { return; } done = true;
-    window[cbName] = null;
-    if (el && el.parentNode) { el.parentNode.removeChild(el); }
-    onFail();
-  }, 8000);
-  window[cbName] = function(data) {
-    if (done) { return; } done = true;
-    clearTimeout(tid); window[cbName] = null;
-    if (el && el.parentNode) { el.parentNode.removeChild(el); }
-    try {
-      var v = parseFunc(data);
-      if (v && v > 50 && v < 300) { onSuccess(parseFloat(v)); return; }
-    } catch(e) {}
-    onFail();
-  };
-  el = document.createElement('script');
-  el.src = url + cbName;
-  el.onerror = function() {
-    if (done) { return; } done = true;
-    clearTimeout(tid); window[cbName] = null; onFail();
-  };
-  document.head.appendChild(el);
-}
-
-function fetchRateA(cb) {
-  jsonpFetch(
-    'https://api.exchangerate-api.com/v4/latest/USD?callback=',
-    function(v) { cb(null, v); },
-    function()  { fetchRateB(cb); },
-    function(d) { return d && d.rates && d.rates.JPY; }
-  );
-}
-
 function fetchRateB(cb) {
-  jsonpFetch(
-    'https://open.er-api.com/v6/latest/USD?callback=',
-    function(v) { cb(null, v); },
-    function()  { fetchRateC(cb); },
-    function(d) { return d && d.rates && d.rates.JPY; }
-  );
-}
-
-function fetchRateC(cb) {
   var x = new XMLHttpRequest();
   x.open('GET','https://api.frankfurter.app/latest?from=USD&to=JPY',true);
   x.timeout = 8000;
@@ -397,13 +390,13 @@ function fetchRateC(cb) {
       try {
         var d = JSON.parse(x.responseText);
         var v = d.rates && d.rates.JPY;
-        if (v && v > 50 && v < 300) { cb(null,parseFloat(v)); return; }
+        if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
       } catch(e) {}
     }
     cb('全API失敗', null);
   };
-  x.ontimeout = function() { cb('タイムアウト',null); };
-  x.onerror   = function() { cb('ネットワークエラー',null); };
+  x.ontimeout = function() { cb('タイムアウト', null); };
+  x.onerror   = function() { cb('ネットワークエラー', null); };
   x.send();
 }
 
@@ -478,8 +471,10 @@ function calcEMA(closes, period) {
 // ==============================
 function drawChart() {
   var canvas = document.getElementById('chart');
-  var dpr = window.devicePixelRatio || 1;
+  if (!canvas) { return; }
   var W = canvas.offsetWidth;
+  if (!W || W === 0) { return; }
+  var dpr = window.devicePixelRatio || 1;
   var H = 160;
   canvas.width  = W * dpr;
   canvas.height = H * dpr;
@@ -638,6 +633,7 @@ function toggleAuto() {
 
 function startAuto() {
   running = true;
+  connectWS();
   document.getElementById('bmain').textContent = '■ 自動読み上げ 停止';
   document.getElementById('bmain').className = 'bmain active';
   var iv = parseInt(document.getElementById('interval').value)||10;
@@ -648,6 +644,8 @@ function startAuto() {
 function stopAuto() {
   running = false;
   clearTimeout(nextTmr); clearInterval(cntTmr);
+  if (ws) { try { ws.close(); } catch(e) {} ws = null; }
+  clearTimeout(wsRetryTmr);
   document.getElementById('bmain').textContent = '▶ 自動読み上げ 開始';
   document.getElementById('bmain').className = 'bmain';
   document.getElementById('tst').textContent = '停止中';
@@ -753,7 +751,7 @@ function showErr(m){ document.getElementById('errmsg').textContent=m; }
 function clearErr(){ document.getElementById('errmsg').textContent=''; }
 
 // Initial chart draw - defer until DOM is ready
-setTimeout(function(){ drawChart(); }, 100);
+window.addEventListener('load', function(){ setTimeout(drawChart, 200); });
 </script>
 </body>
 </html>
