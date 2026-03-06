@@ -392,15 +392,7 @@ function speakAll(rate, prev) {
     var changed = (prevHaSig !== null && sig !== prevHaSig);
     var color = sig === 'bull' ? 'あお' : 'あか';
     var bStr = '';
-    var ha = haMap[tf];
-    var buf = tickBuffers[tf];
-    var bodyVal = 0;
-    if (ha && ha.length > 0) {
-      var last = ha[ha.length-1];
-      bodyVal = Math.abs(last.c - last.o);
-    } else if (buf && buf.length >= 2) {
-      bodyVal = Math.abs(buf[buf.length-1] - buf[0]);
-    }
+    var bodyVal = getHaBody(tf);
     if (bodyVal > 0) { bStr = '。' + bodyText(bodyVal); }
     if (changed) {
       haText = '。' + color + 'にかわりました' + bStr;
@@ -504,24 +496,41 @@ function fetchRateB(cb) {
 // ==============================
 // CANDLE / HA CALCULATION
 // ==============================
-var TF_TICKS = {1:6, 5:30, 15:90, 60:360, 240:1440};
+// 時刻同期ローソク足: 実際の時計に合わせて足を区切る
+// 各TFの現在の足キー（分単位を足の区切りで切り捨て）
+function candleKey(tf) {
+  var now = new Date();
+  var totalMin = now.getHours() * 60 + now.getMinutes();
+  var aligned = Math.floor(totalMin / tf) * tf;
+  return aligned; // 例: 5分足13:07→13:05=785
+}
+
+// 現在足バッファ: {key, ticks[]}
+var currentCandle = {1:null, 5:null, 15:null, 60:null, 240:null};
 
 function addTickAllTF(rate) {
   var tfs = [1,5,15,60,240];
   for (var i = 0; i < tfs.length; i++) {
     var tf = tfs[i];
-    tickBuffers[tf].push(rate);
-    var need = TF_TICKS[tf];
-    if (tickBuffers[tf].length >= need) {
-      var slice = tickBuffers[tf].splice(0, need);
-      var o = slice[0];
-      var c = slice[slice.length-1];
-      var h = Math.max.apply(null, slice);
-      var l = Math.min.apply(null, slice);
-      candleMap[tf].push({o:o,h:h,l:l,c:c});
-      if (candleMap[tf].length > 120) { candleMap[tf].shift(); }
-      calcHA(tf);
+    var key = candleKey(tf);
+    if (!currentCandle[tf] || currentCandle[tf].key !== key) {
+      // 足が変わった → 前の足を確定
+      if (currentCandle[tf] && currentCandle[tf].ticks.length > 0) {
+        var ticks = currentCandle[tf].ticks;
+        var o = ticks[0];
+        var c = ticks[ticks.length-1];
+        var h = Math.max.apply(null, ticks);
+        var l = Math.min.apply(null, ticks);
+        candleMap[tf].push({o:o,h:h,l:l,c:c});
+        if (candleMap[tf].length > 120) { candleMap[tf].shift(); }
+        calcHA(tf);
+      }
+      currentCandle[tf] = {key:key, ticks:[]};
     }
+    currentCandle[tf].ticks.push(rate);
+    // tickBuffersも互換のため更新
+    tickBuffers[tf].push(rate);
+    if (tickBuffers[tf].length > 1440) { tickBuffers[tf].shift(); }
   }
 }
 
@@ -541,20 +550,35 @@ function calcHA(tf) {
 
 function getHaSignal(tf) {
   var ha = haMap[tf];
-  // 完成したローソク足がある場合
+  // 完成したHA足がある場合
   if (ha && ha.length > 0) {
     var last = ha[ha.length-1];
     if (last.c > last.o) { return 'bull'; }
     if (last.c < last.o) { return 'bear'; }
     return 'neutral';
   }
-  // まだ足が完成していない場合はtickBufの最初と最後を比較
-  var buf = tickBuffers[tf];
-  if (buf && buf.length >= 2) {
-    if (buf[buf.length-1] > buf[0]) { return 'bull'; }
-    if (buf[buf.length-1] < buf[0]) { return 'bear'; }
+  // 現在足（未確定）で判断
+  var cur = currentCandle[tf];
+  if (cur && cur.ticks.length >= 2) {
+    var first = cur.ticks[0];
+    var latest = cur.ticks[cur.ticks.length-1];
+    if (latest > first) { return 'bull'; }
+    if (latest < first) { return 'bear'; }
   }
   return null;
+}
+
+function getHaBody(tf) {
+  var ha = haMap[tf];
+  if (ha && ha.length > 0) {
+    var last = ha[ha.length-1];
+    return Math.abs(last.c - last.o);
+  }
+  var cur = currentCandle[tf];
+  if (cur && cur.ticks.length >= 2) {
+    return Math.abs(cur.ticks[cur.ticks.length-1] - cur.ticks[0]);
+  }
+  return 0;
 }
 
 // ==============================
