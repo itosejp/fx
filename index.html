@@ -157,14 +157,19 @@ return r;
 }
 
 // ───── API取得チェーン ─────
+// 1st: freeforexapi.com (キー不要・リアルタイム数秒更新)
 function fetchRate(cb) {
 var x = new XMLHttpRequest();
-x.open(‘GET’, ‘https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg’, true);
+x.open(‘GET’, ‘https://www.freeforexapi.com/api/live?pairs=USDJPY’, true);
 x.timeout = 7000;
 x.onreadystatechange = function() {
 if (x.readyState === 4) {
 if (x.status === 200) {
-try { var d = JSON.parse(x.responseText), v = d.c || d.l; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {}
+try {
+var d = JSON.parse(x.responseText);
+var v = d && d.rates && d.rates.USDJPY && d.rates.USDJPY.rate;
+if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+} catch(e) {}
 }
 fetchRateA(cb);
 }
@@ -174,26 +179,50 @@ x.onerror = function() { fetchRateA(cb); };
 x.send();
 }
 
+// 2nd: Twelve Data (無料枠・リアルタイム、キー不要の公開エンドポイント)
 function fetchRateA(cb) {
-var done = false, cbName = ‘fxa’ + Date.now(), el = null;
-var tid = setTimeout(function() { if (done) return; done = true; window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); fetchRateB(cb); }, 8000);
-window[cbName] = function(data) { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); try { var v = data && data.rates && data.rates.JPY; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {} fetchRateB(cb); };
-el = document.createElement(‘script’);
-el.src = ‘https://api.exchangerate-api.com/v4/latest/USD?callback=’ + cbName;
-el.onerror = function() { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; fetchRateB(cb); };
-document.head.appendChild(el);
+var x = new XMLHttpRequest();
+x.open(‘GET’, ‘https://api.twelvedata.com/price?symbol=USD/JPY&apikey=demo’, true);
+x.timeout = 7000;
+x.onreadystatechange = function() {
+if (x.readyState === 4) {
+if (x.status === 200) {
+try {
+var d = JSON.parse(x.responseText);
+var v = d && d.price;
+if (v && parseFloat(v) > 50 && parseFloat(v) < 300) { cb(null, parseFloat(v)); return; }
+} catch(e) {}
+}
+fetchRateB(cb);
+}
+};
+x.ontimeout = function() { fetchRateB(cb); };
+x.onerror = function() { fetchRateB(cb); };
+x.send();
 }
 
+// 3rd: Finnhub (キー付き・準リアルタイム)
 function fetchRateB(cb) {
-var done = false, cbName = ‘fxb’ + Date.now(), el = null;
-var tid = setTimeout(function() { if (done) return; done = true; window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); fetchRateC(cb); }, 8000);
-window[cbName] = function(data) { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; if (el && el.parentNode) el.parentNode.removeChild(el); try { var v = data && data.rates && data.rates.JPY; if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; } } catch(e) {} fetchRateC(cb); };
-el = document.createElement(‘script’);
-el.src = ‘https://open.er-api.com/v6/latest/USD?callback=’ + cbName;
-el.onerror = function() { if (done) return; done = true; clearTimeout(tid); window[cbName] = null; fetchRateC(cb); };
-document.head.appendChild(el);
+var x = new XMLHttpRequest();
+x.open(‘GET’, ‘https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg’, true);
+x.timeout = 7000;
+x.onreadystatechange = function() {
+if (x.readyState === 4) {
+if (x.status === 200) {
+try {
+var d = JSON.parse(x.responseText), v = d.c || d.l;
+if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+} catch(e) {}
+}
+fetchRateC(cb);
+}
+};
+x.ontimeout = function() { fetchRateC(cb); };
+x.onerror = function() { fetchRateC(cb); };
+x.send();
 }
 
+// 4th: Frankfurter (日次・最終フォールバック)
 function fetchRateC(cb) {
 var x = new XMLHttpRequest();
 x.open(‘GET’, ‘https://api.frankfurter.app/latest?from=USD&to=JPY’, true);
