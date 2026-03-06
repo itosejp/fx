@@ -2,98 +2,177 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>USDJPY Monitor</title>
-
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>ドル円 読み上げ Pro (Pips仕様)</title>
 <style>
-body{
-font-family:Arial;
-background:#111;
-color:#0f0;
-text-align:center;
-padding-top:60px;
-}
-
-#price{
-font-size:70px;
-margin:20px;
-}
-
-#change{
-font-size:40px;
-}
+:root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+.wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
+.hdr{text-align:center;padding:4px 0 8px}
+.hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
+.hdr-t{font-size:20px;letter-spacing:3px;color:var(--txt);opacity:.35;font-weight:300}
+.rcard{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:20px 16px 16px;text-align:center;transition:all .4s ease}
+.rcard.bull{border-color:rgba(0,229,160,.5);box-shadow:0 0 24px rgba(0,229,160,.1)}
+.rcard.bear{border-color:rgba(255,69,96,.5);box-shadow:0 0 24px rgba(255,69,96,.1)}
+.pair{font-size:10px;letter-spacing:4px;color:var(--dim);margin-bottom:6px}
+.rnum{font-size:64px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--green)}
+.rnum.bear{color:var(--red)}
+.rdec{font-size:34px;opacity:.75}
+.badges{display:flex;justify-content:center;gap:8px;margin-top:8px;min-height:24px}
+.badge{padding:3px 10px;border-radius:16px;font-size:12px;font-weight:700;display:none}
+.badge.show{display:inline-block}
+.bchg.up{background:rgba(0,229,160,.15);color:var(--green)}
+.bchg.dn{background:rgba(255,69,96,.15);color:var(--red)}
+.sbar{display:flex;align-items:flex-end;gap:3px;height:18px;opacity:0;transition:opacity .3s;justify-content:center;margin-top:6px}
+.sbar.on{opacity:1}
+.sb{width:3px;border-radius:2px;background:var(--blue);animation:sd .45s ease-in-out infinite alternate}
+@keyframes sd{from{transform:scaleY(.3);opacity:.4}to{transform:scaleY(1);opacity:1}}
+.trow{background:var(--sf);border:1px solid var(--bd);border-radius:14px;padding:11px 14px;display:flex;align-items:center;gap:12px}
+.ring{position:relative;width:42px;height:42px}
+.rsvg{width:42px;height:42px;transform:rotate(-90deg)}
+.rtrk{fill:none;stroke:var(--bd);stroke-width:3}
+.rprg{fill:none;stroke:var(--green);stroke-width:3;stroke-dasharray:113;transition:stroke-dashoffset 1s linear}
+.rn{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:16px;font-weight:900;color:var(--green)}
+.lcard{background:var(--sf);border:1px solid var(--bd);border-radius:14px;overflow:hidden}
+.llist{max-height:150px;overflow-y:auto}
+.litem{display:flex;justify-content:space-between;padding:8px 14px;border-bottom:1px solid rgba(26,26,46,.5);font-size:12px}
+.bmain{width:100%;padding:16px;background:linear-gradient(135deg,#00e5a0,#00c87a);border:none;border-radius:14px;color:#080810;font-weight:700;cursor:pointer}
+.bmain.active{background:linear-gradient(135deg,#1a1a2e,#222240);color:var(--red)}
 </style>
 </head>
-
 <body>
-
-<h1>USDJPY</h1>
-
-<div id="price">---</div>
-<div id="change">---</div>
+<div class="wrap">
+  <div class="hdr"><div class="hdr-s">Live Forex</div><div class="hdr-t">ドル円 読み上げ</div></div>
+  <div class="rcard" id="rcard">
+    <div class="pair">USD / JPY</div>
+    <div id="rnum" class="rnum">---<span class="rdec">.---</span></div>
+    <div class="badges"><div class="badge bchg" id="bchg"></div></div>
+    <div class="sbar" id="sbar"><div class="sb" style="height:10px"></div><div class="sb" style="height:18px"></div><div class="sb" style="height:12px"></div></div>
+  </div>
+  <div class="trow">
+    <div class="ring"><svg class="rsvg"><circle class="rtrk" cx="21" cy="21" r="18"/><circle id="rprg" class="rprg" cx="21" cy="21" r="18"/></svg><div class="rn" id="rn">10</div></div>
+    <div><div style="font-size:10px;color:var(--dim)">NEXT</div><div id="tst">待機中</div></div>
+  </div>
+  <div class="lcard"><div class="llist" id="llist"></div></div>
+  <button class="bmain" id="bmain" onclick="toggleAuto()">▶ 自動読み上げ 開始</button>
+</div>
 
 <script>
+let running = false, lastRate = null, cd = 10, nextTmr, cntTmr;
+const KANA = ['ぜろ','いち','にぃ','さん','よん','ごー','ろく','なな','はち','きゅう'];
 
-let prevPrice = null;
-
-function speak(text){
-
-const msg = new SpeechSynthesisUtterance(text);
-msg.lang="ja-JP";
-
-speechSynthesis.cancel();
-speechSynthesis.speak(msg);
-
+function rateToKana(rate) {
+  const [int, dec] = rate.toFixed(3).split('.');
+  let res = "";
+  for(let c of int) res += KANA[parseInt(c)];
+  res += ' てん ';
+  for(let c of dec) res += KANA[parseInt(c)];
+  return res;
 }
 
-async function getPrice(){
-
-try{
-
-const res = await fetch(
-"https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=jpy"
-);
-
-const data = await res.json();
-
-const price = data.usd.jpy;
-
-document.getElementById("price").innerText =
-price.toFixed(3);
-
-if(prevPrice !== null){
-
-const diff = price - prevPrice;
-
-document.getElementById("change").innerText =
-(diff>0?"+":"")+diff.toFixed(3);
-
-if(Math.abs(diff) >= 0.01){
-
-if(diff>0){
-speak("プラス " + diff.toFixed(2));
-}else{
-speak("マイナス " + Math.abs(diff).toFixed(2));
+function getDiffText(rate, prev) {
+  if (!prev) return "";
+  const diffPoints = Math.round((rate - prev) * 1000);
+  if (diffPoints === 0) return "。変化なし。";
+  
+  const sign = diffPoints > 0 ? "プラス" : "マイナス";
+  const v = Math.abs(diffPoints);
+  
+  // 読み方の調整（5と15を優先対応、他は数字並べ）
+  let valText = "";
+  if (v === 5) valText = "ごー";
+  else if (v === 15) valText = "じゅうご";
+  else {
+    for(let c of v.toString()) valText += KANA[parseInt(c)];
+  }
+  
+  return `。${sign}${valText}。`;
 }
 
+async function fetchRate() {
+  try {
+    const r = await fetch('https://finnhub.io/api/v1/quote?symbol=OANDA%3AUSD_JPY&token=d6l3mlpr01qptf3ompl0d6l3mlpr01qptf3omplg');
+    const d = await r.json();
+    const v = d.c || d.l;
+    if (v) processRate(parseFloat(v));
+  } catch(e) { console.error("API Error"); }
 }
 
+function processRate(rate) {
+  const prev = lastRate;
+  updateUI(rate, prev);
+  
+  let txt = rateToKana(rate);
+  txt += getDiffText(rate, prev);
+  
+  speak(txt);
+  addLog(rate, prev);
+  lastRate = rate;
 }
 
-prevPrice = price;
-
-}catch(e){
-
-console.log("API error",e);
-
+function updateUI(rate, prev) {
+  const s = rate.toFixed(3).split('.');
+  document.getElementById('rnum').innerHTML = `${s[0]}<span class="rdec">.${s[1]}</span>`;
+  if (prev) {
+    const d = rate - prev;
+    const bc = document.getElementById('bchg');
+    bc.textContent = (d >= 0 ? '+' : '') + d.toFixed(3);
+    bc.className = `badge bchg ${d >= 0 ? 'up' : 'dn'} show`;
+    document.getElementById('rnum').className = `rnum ${d < 0 ? 'bear' : ''}`;
+  }
 }
 
+function speak(text) {
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP'; u.rate = 1.0;
+  u.onstart = () => document.getElementById('sbar').classList.add('on');
+  u.onend = () => document.getElementById('sbar').classList.remove('on');
+  window.speechSynthesis.speak(u);
 }
 
-getPrice();
+function toggleAuto() {
+  if (running) {
+    running = false;
+    document.getElementById('bmain').textContent = '▶ 自動読み上げ 開始';
+    document.getElementById('bmain').classList.remove('active');
+    clearTimeout(nextTmr); clearInterval(cntTmr);
+  } else {
+    running = true;
+    document.getElementById('bmain').textContent = '■ 停止';
+    document.getElementById('bmain').classList.add('active');
+    // 初回無音再生（iOS対策）
+    window.speechSynthesis.speak(new SpeechSynthesisUtterance(""));
+    loop();
+  }
+}
 
-setInterval(getPrice,10000);
+function loop() {
+  fetchRate();
+  cd = 10;
+  updateRing();
+  clearInterval(cntTmr);
+  cntTmr = setInterval(() => {
+    cd--; updateRing();
+    if (cd <= 0) clearInterval(cntTmr);
+  }, 1000);
+  nextTmr = setTimeout(() => { if(running) loop(); }, 10000);
+}
 
+function updateRing() {
+  document.getElementById('rn').textContent = cd;
+  document.getElementById('rprg').style.strokeDashoffset = 113 * (1 - cd/10);
+}
+
+function addLog(rate, prev) {
+  const list = document.getElementById('llist');
+  const item = document.createElement('div');
+  item.className = 'litem';
+  const diff = prev ? (rate - prev).toFixed(3) : "---";
+  item.innerHTML = `<span style="color:var(--dim)">${new Date().toLocaleTimeString()}</span><b>${rate.toFixed(3)}</b><span style="color:${parseFloat(diff)>0?'var(--green)':'var(--red)'}">${diff}</span>`;
+  list.insertBefore(item, list.firstChild);
+}
 </script>
-
 </body>
 </html>
