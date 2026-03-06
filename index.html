@@ -412,27 +412,42 @@ function connectWS() {
       }
     } catch(ex) {}
   };
-  ws.onerror = function() { showErr('WS接続エラー'); };
+  ws.onerror = function() {
+    // WSエラーは無視してRESTで継続
+    wsRate = null;
+  };
   ws.onclose = function() {
-    // 5秒後に再接続
-    wsRetryTmr = setTimeout(connectWS, 5000);
+    wsRate = null;
+    // 30秒後に再試行（連続エラー防止）
+    wsRetryTmr = setTimeout(connectWS, 30000);
   };
 }
 
 function fetchRate(cb) {
-  // WebSocketで取得済みの価格を使う
-  if (wsRate !== null) {
-    cb(null, wsRate);
-    return;
-  }
-  // WS未接続ならREST fallback
-  fetchRateA(cb);
+  // 1st: WebSocket価格があればそれを使う
+  if (wsRate !== null) { cb(null, wsRate); return; }
+  // 2nd: freeforexapi (APIキー不要・リアルタイム)
+  var x = new XMLHttpRequest();
+  x.open('GET','https://www.freeforexapi.com/api/live?pairs=USDJPY',true);
+  x.timeout = 6000;
+  x.onreadystatechange = function() {
+    if (x.readyState !== 4) { return; }
+    if (x.status === 200) {
+      try {
+        var d = JSON.parse(x.responseText);
+        var v = d && d.rates && d.rates.USDJPY && d.rates.USDJPY.rate;
+        if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+      } catch(e) {}
+    }
+    fetchRateA(cb);
+  };
+  x.ontimeout = function() { fetchRateA(cb); };
+  x.onerror   = function() { fetchRateA(cb); };
+  x.send();
 }
 
-// ==============================
-// REST FALLBACK APIs
-// ==============================
 function fetchRateA(cb) {
+  // 3rd: fawazahmed0 CDN
   var x = new XMLHttpRequest();
   x.open('GET','https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@latest/v1/currencies/usd.json',true);
   x.timeout = 6000;
@@ -453,6 +468,7 @@ function fetchRateA(cb) {
 }
 
 function fetchRateB(cb) {
+  // 4th: frankfurter
   var x = new XMLHttpRequest();
   x.open('GET','https://api.frankfurter.app/latest?from=USD&to=JPY',true);
   x.timeout = 8000;
