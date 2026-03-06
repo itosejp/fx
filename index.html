@@ -2,182 +2,96 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<title>ドル円 読み上げ</title>
+<title>USDJPY Monitor</title>
+
 <style>
-:root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
-*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
-.wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
-.hdr{text-align:center;padding:4px 0 8px}
-.hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
-.hdr-t{font-size:20px;letter-spacing:3px;color:var(--txt);opacity:.35;font-weight:300}
-.rcard{background:var(--sf);border:1px solid var(--bd);border-radius:18px;padding:20px 16px 16px;text-align:center;transition:border-color .4s,box-shadow .4s}
-.rnum{font-size:64px;line-height:1;font-weight:900;letter-spacing:-1px;color:var(--green)}
-.rdec{font-size:34px;opacity:.75}
-.badges{display:flex;justify-content:center;gap:8px;margin-top:8px}
-.badge{padding:3px 10px;border-radius:16px;font-size:12px;font-weight:700}
-.bchg{background:rgba(0,229,160,.15);color:var(--green)}
-.sbar{display:flex;align-items:flex-end;gap:3px;height:18px;opacity:0;transition:opacity .3s}
-.sbar.on{opacity:1}
-.sb{width:3px;border-radius:2px;background:var(--blue);animation:sd .45s ease-in-out infinite alternate}
-@keyframes sd{from{transform:scaleY(.3)}to{transform:scaleY(1)}}
+body{
+font-family:Arial;
+background:#111;
+color:#0f0;
+text-align:center;
+padding-top:60px;
+}
+
+#price{
+font-size:70px;
+margin:20px;
+}
+
+#change{
+font-size:40px;
+}
 </style>
 </head>
 
 <body>
 
-<div class="wrap">
+<h1>USDJPY</h1>
 
-<div class="hdr">
-<div class="hdr-s">Live Forex</div>
-<div class="hdr-t">ドル円 読み上げ</div>
-</div>
-
-<div class="rcard">
-<div class="pair">USD / JPY</div>
-<div class="rnum" id="rnum">---<span class="rdec">.---</span></div>
-<div class="badges">
-<div class="badge bchg" id="bchg"></div>
-</div>
-
-<div class="sbar" id="sbar">
-<div class="sb"></div>
-<div class="sb"></div>
-<div class="sb"></div>
-</div>
-
-</div>
-
-<button onclick="toggleAuto()">自動読み上げ</button>
-
-</div>
+<div id="price">---</div>
+<div id="change">---</div>
 
 <script>
 
-var running=false
-var lastRate=null
-
-var KANA=['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう']
-
-function rateText(rate){
-
-var s=rate.toFixed(3)
-var p=s.split('.')
-
-var r=''
-
-for(var i=0;i<p[0].length;i++){
-
-r+=KANA[parseInt(p[0][i])]
-
-}
-
-r+=' てん '
-
-for(var i=0;i<p[1].length;i++){
-
-r+=KANA[parseInt(p[1][i])]
-
-}
-
-return r
-
-}
-
+let prevPrice = null;
 
 function speak(text){
 
-var u=new SpeechSynthesisUtterance(text)
+const msg = new SpeechSynthesisUtterance(text);
+msg.lang="ja-JP";
 
-u.lang='ja-JP'
-
-u.rate=0.9
-
-speechSynthesis.cancel()
-
-speechSynthesis.speak(u)
+speechSynthesis.cancel();
+speechSynthesis.speak(msg);
 
 }
 
+async function getPrice(){
 
-function update(rate){
+try{
 
-var el=document.getElementById("rnum")
+const res = await fetch(
+"https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=jpy"
+);
 
-var s=rate.toFixed(3).split('.')
+const data = await res.json();
 
-el.innerHTML=s[0]+'<span class="rdec">.'+s[1]+'</span>'
+const price = data.usd.jpy;
 
+document.getElementById("price").innerText =
+price.toFixed(3);
 
-if(lastRate!=null){
+if(prevPrice !== null){
 
-var diff=rate-lastRate
+const diff = price - prevPrice;
 
-var txt=rateText(rate)
+document.getElementById("change").innerText =
+(diff>0?"+":"")+diff.toFixed(3);
 
-txt+="。変動 "
+if(Math.abs(diff) >= 0.01){
 
-txt+=diff.toFixed(3)
-
-txt+=" 円"
-
-speak(txt)
-
+if(diff>0){
+speak("プラス " + diff.toFixed(2));
+}else{
+speak("マイナス " + Math.abs(diff).toFixed(2));
 }
-
-lastRate=rate
-
-}
-
-
-
-function fetchRate(){
-
-fetch("https://api.exchangerate.host/convert?from=USD&to=JPY")
-
-.then(r=>r.json())
-
-.then(d=>{
-
-var rate=d.result
-
-if(rate>50 && rate<300){
-
-update(rate)
-
-}
-
-})
-
-.catch(()=>{})
-
-}
-
-
-function loop(){
-
-if(!running)return
-
-fetchRate()
-
-setTimeout(loop,10000)
-
-}
-
-
-function toggleAuto(){
-
-running=!running
-
-if(running){
-
-loop()
 
 }
 
 }
+
+prevPrice = price;
+
+}catch(e){
+
+console.log("API error",e);
+
+}
+
+}
+
+getPrice();
+
+setInterval(getPrice,10000);
 
 </script>
 
