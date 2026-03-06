@@ -6,9 +6,18 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <title>ドル円 読み上げ</title>
 <style>
-:root{--bg:#080810;--sf:#10101a;--sf2:#16162a;--green:#00e5a0;--blue:#00b8ff;--red:#ff4560;--yellow:#ffb300;--txt:#e8e8f2;--dim:#4a4a6a;--bd:#1a1a2e}
+:root {
+  --bg:#080810; --sf:#10101a; --sf2:#16162a;
+  --green:#00e5a0; --blue:#00b8ff;
+  --red:#ff4560; --yellow:#ffb300;
+  --txt:#e8e8f2; --dim:#4a4a6a; --bd:#1a1a2e;
+}
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-serif;min-height:100vh;display:flex;flex-direction:column;align-items:center}
+body{
+  background:var(--bg);color:var(--txt);
+  font-family:'Hiragino Sans','Hiragino Kaku Gothic ProN','Yu Gothic',sans-serif;
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+}
 .wrap{width:100%;max-width:420px;padding:16px 14px 48px;display:flex;flex-direction:column;gap:10px}
 .hdr{text-align:center;padding:4px 0 8px}
 .hdr-s{font-size:10px;letter-spacing:5px;color:var(--green);opacity:.7;text-transform:uppercase}
@@ -66,7 +75,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-seri
 .litem{display:flex;justify-content:space-between;align-items:center;padding:7px 14px;border-bottom:1px solid rgba(26,26,46,.5);font-size:12px}
 .ltm{color:var(--dim);font-size:10px}
 .lrt{font-size:17px;font-weight:900}
-.lrt.up{color:var(--green)}.lrt.dn{color:var(--red)}.lrt.nc{color:var(--txt)}
+.lrt.up{color:var(--green)} .lrt.dn{color:var(--red)} .lrt.nc{color:var(--txt)}
 .ldf{font-size:11px;min-width:50px;text-align:right}
 .bmain{width:100%;padding:16px;background:linear-gradient(135deg,#00e5a0,#00c87a);border:none;border-radius:14px;color:#080810;font-family:inherit;font-size:14px;font-weight:700;letter-spacing:2px;cursor:pointer}
 .bmain.active{background:linear-gradient(135deg,#1a1a2e,#222240);color:var(--red);border:1px solid rgba(255,69,96,.3)}
@@ -78,33 +87,68 @@ body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-seri
 </head>
 <body>
 <div class="wrap">
-<div class="hdr"><div class="hdr-s">Live Forex</div><div class="hdr-t">ドル円 読み上げ</div></div>
+<div class="hdr">
+  <div class="hdr-s">Live Forex</div>
+  <div class="hdr-t">ドル円 読み上げ</div>
+</div>
 <div class="rcard" id="rcard">
-<div class="pair">USD / JPY</div>
-<div class="rnum loading" id="rnum">---<span class="rdec">.---</span></div>
-<div class="badges"><div class="badge bchg" id="bchg"></div><div class="badge bsrg" id="bsrg"></div></div>
+  <div class="pair">USD / JPY</div>
+  <div class="rnum loading" id="rnum">---<span class="rdec">.---</span></div>
+  <div class="badges">
+    <div class="badge bchg" id="bchg"></div>
+    <div class="badge bsrg" id="bsrg"></div>
+  </div>
 </div>
 <div class="hacard">
-<div><div class="ha-l">平均足（HA）判定</div><div class="ha-v" id="hav">データ収集中...</div></div>
-<div class="sbar" id="sbar"><div class="sb"></div><div class="sb"></div><div class="sb"></div><div class="sb"></div><div class="sb"></div></div>
+  <div>
+    <div class="ha-l">平均足（HA）判定</div>
+    <div class="ha-v" id="hav">データ収集中...</div>
+  </div>
+  <div class="sbar" id="sbar">
+    <div class="sb"></div><div class="sb"></div><div class="sb"></div>
+    <div class="sb"></div><div class="sb"></div>
+  </div>
 </div>
 <div class="trow">
-<div class="ring">
-<svg class="rsvg" viewBox="0 0 42 42"><circle class="rtrk" cx="21" cy="21" r="18"/><circle class="rprg" id="rprg" cx="21" cy="21" r="18"/></svg>
-<div class="rn" id="rn">10</div>
-</div>
-<div><div class="tlbl">次の更新まで</div><div class="tst" id="tst">待機中</div></div>
+  <div class="ring">
+    <svg class="rsvg" viewBox="0 0 42 42">
+      <circle class="rtrk" cx="21" cy="21" r="18"/>
+      <circle class="rprg" id="rprg" cx="21" cy="21" r="18"/>
+    </svg>
+    <div class="rn" id="rn">10</div>
+  </div>
+  <div>
+    <div class="tlbl">次の更新まで</div>
+    <div class="tst" id="tst">待機中</div>
+  </div>
 </div>
 <div class="sett">
-<div class="shdr" id="shdr"><span>設定</span><span id="sarr">▼</span></div>
-<div class="sbody hid" id="sbody">
-<div class="srow"><div class="slbl">急騰・急落の閾値（円）</div><input class="sinp" id="thresh" type="number" step="0.01" value="0.03" min="0.01"></div>
-<div class="srow"><div class="slbl">平均足 連続判定本数</div><select class="sinp" id="hacount"><option value="2">2本</option><option value="3" selected>3本</option><option value="5">5本</option></select></div>
-</div>
+  <div class="shdr" id="shdr">
+    <span>設定</span><span id="sarr">▼</span>
+  </div>
+  <div class="sbody hid" id="sbody">
+    <div class="srow">
+      <div class="slbl">急騰・急落の閾値（円）</div>
+      <input class="sinp" id="thresh" type="number" step="0.01" value="0.03" min="0.01">
+    </div>
+    <div class="srow">
+      <div class="slbl">平均足 連続判定本数</div>
+      <select class="sinp" id="hacount">
+        <option value="2">2本</option>
+        <option value="3" selected>3本</option>
+        <option value="5">5本</option>
+      </select>
+    </div>
+  </div>
 </div>
 <div class="lcard">
-<div class="lhdr"><span>更新履歴</span><div class="ldot"></div></div>
-<div class="llist" id="llist"><div class="litem" style="color:var(--dim);justify-content:center">開始ボタンを押してください</div></div>
+  <div class="lhdr">
+    <span>更新履歴</span>
+    <div class="ldot"></div>
+  </div>
+  <div class="llist" id="llist">
+    <div class="litem" style="color:var(--dim);justify-content:center">開始ボタンを押してください</div>
+  </div>
 </div>
 <button class="bmain" id="bmain" onclick="toggleAuto()">▶ 自動読み上げ 開始</button>
 <button class="bonce" onclick="doOnce()">今すぐ1回読み上げ</button>
@@ -112,32 +156,350 @@ body{background:var(--bg);color:var(--txt);font-family:'Hiragino Sans',sans-seri
 <div class="note" id="note"><b>最初に「自動読み上げ 開始」をタップ</b><br>すると音声が有効になります</div>
 </div>
 <script>
-var running=false,nextTmr=null,cntTmr=null,cd=10,lastRate=null,rawC=[],haC=[],spReady=false,CIRC=113;
-var KANA=['ぜろ','いち','に','さん','し','ご','ろく','なな','はち','きゅう'];
-function rateText(rate){var s=rate.toFixed(3),p=s.split('.'),r='';for(var i=0;i<p[0].length;i++){r+=KANA[parseInt(p[0][i])];}r+=' てん ';for(var j=0;j<p[1].length;j++){r+=KANA[parseInt(p[1][j])];}return r;}
-function fetchRate(cb){var done=false,cbName='fx'+Date.now(),el=null;var tid=setTimeout(function(){if(done){return;}done=true;window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}fetchRate2(cb);},8000);window[cbName]=function(data){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}try{var v=data&&data.rates&&data.rates.JPY;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}fetchRate2(cb);};el=document.createElement('script');el.src='https://api.exchangerate-api.com/v4/latest/USD?callback='+cbName;el.onerror=function(){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;fetchRate2(cb);};document.head.appendChild(el);}
-function fetchRate2(cb){var done=false,cbName='fx2'+Date.now(),el=null;var tid=setTimeout(function(){if(done){return;}done=true;window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}fetchRate3(cb);},8000);window[cbName]=function(data){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;if(el&&el.parentNode){el.parentNode.removeChild(el);}try{var v=data&&data.rates&&data.rates.JPY;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}fetchRate3(cb);};el=document.createElement('script');el.src='https://open.er-api.com/v6/latest/USD?callback='+cbName;el.onerror=function(){if(done){return;}done=true;clearTimeout(tid);window[cbName]=null;fetchRate3(cb);};document.head.appendChild(el);}
-function fetchRate3(cb){var x=new XMLHttpRequest();x.open('GET','https://api.frankfurter.app/latest?from=USD&to=JPY',true);x.timeout=8000;x.onreadystatechange=function(){if(x.readyState===4){if(x.status===200){try{var d=JSON.parse(x.responseText),v=d.rates&&d.rates.JPY;if(v&&v>50&&v<300){cb(null,parseFloat(v));return;}}catch(e){}}cb('全API失敗',null);}};x.ontimeout=function(){cb('タイムアウト',null);};x.onerror=function(){cb('ネットワークエラー',null);};x.send();}
-function addTick(rate){var prev=rawC.length?rawC[rawC.length-1]:null,o=prev?prev.c:rate,h=Math.max(o,rate)+Math.random()*.01,l=Math.min(o,rate)-Math.random()*.01;rawC.push({o:o,h:h,l:l,c:rate});haC=[];for(var i=0;i<rawC.length;i++){var raw=rawC[i],hac=(raw.o+raw.h+raw.l+raw.c)/4,hao=i===0?(raw.o+raw.c)/2:(haC[i-1].o+haC[i-1].c)/2,hah=Math.max(raw.h,hao,hac),hal=Math.min(raw.l,hao,hac);haC.push({o:hao,h:hah,l:hal,c:hac});}}
-function getSignal(){var n=parseInt(document.getElementById('hacount').value)||3;if(haC.length<n){return null;}var slice=haC.slice(-n),bull=true,bear=true;for(var i=0;i<slice.length;i++){if(slice[i].c<=slice[i].o){bull=false;}if(slice[i].c>=slice[i].o){bear=false;}}if(bull){return'bull';}if(bear){return'bear';}return'neutral';}
-function doFetch(){clearErr();fetchRate(function(err,rate){if(err||rate===null){showErr('取得失敗: '+(err||'null'));return;}var prev=lastRate;addTick(rate);updateDisplay(rate,prev);updateHA();addLog(rate,prev);lastRate=rate;speakAll(rate,prev);});}
-function doOnce(){initSpeech();doFetch();}
-function updateDisplay(rate,prev){var card=document.getElementById('rcard'),el=document.getElementById('rnum'),bc=document.getElementById('bchg'),bs=document.getElementById('bsrg'),s=rate.toFixed(3).split('.');el.innerHTML=s[0]+'<span class="rdec">.'+s[1]+'</span>';el.className='rnum';card.className='rcard';if(prev!==null){var diff=rate-prev,sign=diff>=0?'+':'',arrow=diff>0.001?'↑':diff<-0.001?'↓':'→';bc.textContent=arrow+' '+sign+diff.toFixed(3)+' 円';var cls=diff>0.001?'up':diff<-0.001?'dn':'nc';bc.className='badge bchg '+cls+' show';if(diff>0.001){card.className='rcard bull';}else if(diff<-0.001){el.className='rnum bear';card.className='rcard bear';}var thr=parseFloat(document.getElementById('thresh').value)||0.03;if(Math.abs(diff)>=thr){bs.textContent=diff>0?'急騰！':'急落！';bs.className='badge bsrg show';setTimeout(function(){bs.className='badge bsrg';},8000);}}}
-function updateHA(){var sig=getSignal(),el=document.getElementById('hav'),n=parseInt(document.getElementById('hacount').value)||3,have=Math.min(haC.length,n);if(sig==='bull'){el.textContent='▲ 陽線（上昇）'+have+'本連続';el.className='ha-v bull';}else if(sig==='bear'){el.textContent='▼ 陰線（下降）'+have+'本連続';el.className='ha-v bear';}else if(sig==='neutral'){el.textContent='━ 中立';el.className='ha-v';}else{el.textContent='データ収集中 '+haC.length+'/'+n+'本';el.className='ha-v';}}
-function initSpeech(){if(spReady||!window.speechSynthesis){return;}var u=new SpeechSynthesisUtterance('');u.volume=0;u.lang='ja-JP';window.speechSynthesis.speak(u);spReady=true;document.getElementById('note').style.display='none';}
-function speak(text){if(!window.speechSynthesis){return;}window.speechSynthesis.cancel();var u=new SpeechSynthesisUtterance(text);u.lang='ja-JP';u.rate=0.85;u.pitch=1.0;u.volume=1.0;var bar=document.getElementById('sbar');u.onstart=function(){bar.className='sbar on';};u.onend=function(){bar.className='sbar';};u.onerror=function(){bar.className='sbar';};window.speechSynthesis.resume();window.speechSynthesis.speak(u);var kick=setInterval(function(){if(!window.speechSynthesis.speaking){clearInterval(kick);return;}window.speechSynthesis.pause();window.speechSynthesis.resume();},5000);}
-function speakAll(rate,prev){var thr=parseFloat(document.getElementById('thresh').value)||0.03,prefix='';if(prev!==null){var diff=rate-prev;if(diff>=thr){prefix='急騰です。';}else if(diff<=-thr){prefix='急落です。';}}var sig=getSignal(),suffix='';if(sig==='bull'){suffix='。平均足は陽線です';}else if(sig==='bear'){suffix='。平均足は陰線です';}speak(prefix+rateText(rate)+suffix);}
-function toggleAuto(){initSpeech();if(running){stopAuto();}else{startAuto();}}
-function startAuto(){running=true;document.getElementById('bmain').textContent='■ 自動読み上げ 停止';document.getElementById('bmain').className='bmain active';document.getElementById('tst').textContent='10秒ごとに更新中';doFetch();schedNext();}
-function stopAuto(){running=false;clearTimeout(nextTmr);clearInterval(cntTmr);document.getElementById('bmain').textContent='▶ 自動読み上げ 開始';document.getElementById('bmain').className='bmain';document.getElementById('tst').textContent='停止中';resetRing();}
-function schedNext(){clearTimeout(nextTmr);clearInterval(cntTmr);cd=10;updateRing();cntTmr=setInterval(function(){cd--;updateRing();if(cd<=0){clearInterval(cntTmr);}},1000);nextTmr=setTimeout(function(){if(running){doFetch();schedNext();}},10000);}
-function updateRing(){var p=document.getElementById('rprg'),n=document.getElementById('rn');n.textContent=cd;p.style.strokeDashoffset=CIRC*(1-cd/10);var hot=cd<=3;p.style.stroke=hot?'var(--red)':'var(--green)';n.style.color=hot?'var(--red)':'var(--green)';}
-function resetRing(){var p=document.getElementById('rprg'),n=document.getElementById('rn');n.textContent='10';n.style.color='var(--green)';p.style.strokeDashoffset=0;p.style.stroke='var(--green)';}
-function addLog(rate,prev){var list=document.getElementById('llist');if(list.children.length===1&&list.children[0].style.justifyContent==='center'){list.innerHTML='';}while(list.children.length>=12){list.removeChild(list.lastChild);}var now=new Date().toLocaleTimeString('ja-JP',{hour:'2-digit',minute:'2-digit',second:'2-digit'}),cls='nc',dstr='';if(prev!==null){var d=rate-prev;dstr=(d>=0?'+':'')+d.toFixed(3);cls=d>0.001?'up':d<-0.001?'dn':'nc';}var dcol=cls==='up'?'var(--green)':cls==='dn'?'var(--red)':'var(--dim)';var item=document.createElement('div');item.className='litem';item.innerHTML='<span class="ltm">'+now+'</span><span class="lrt '+cls+'">'+rate.toFixed(3)+'</span><span class="ldf" style="color:'+dcol+'">'+dstr+'</span>';list.insertBefore(item,list.firstChild);}
-function toggleSettings(){var b=document.getElementById('sbody'),a=document.getElementById('sarr');if(b.className==='sbody hid'){b.className='sbody';a.textContent='▲';}else{b.className='sbody hid';a.textContent='▼';}}
-document.getElementById('shdr').addEventListener('click',toggleSettings);
-function showErr(m){document.getElementById('errmsg').textContent=m;}
-function clearErr(){document.getElementById('errmsg').textContent='';}
+var running = false;
+var nextTmr = null;
+var cntTmr = null;
+var cd = 10;
+var lastRate = null;
+var rawC = [];
+var haC = [];
+var spReady = false;
+var CIRC = 113;
+var KANA = ['ぜろ','いち','に','さん','よん','ご','ろく','なな','はち','きゅう'];
+
+function rateText(rate) {
+  var s = rate.toFixed(3);
+  var parts = s.split('.');
+  var int = parts[0];
+  var dec = parts[1];
+  var r = '';
+  for (var i = 0; i < int.length; i++) { r += KANA[parseInt(int[i])]; }
+  r += ' てん ';
+  for (var j = 0; j < dec.length; j++) { r += KANA[parseInt(dec[j])]; }
+  return r;
+}
+
+function fetchRate(cb) {
+  var x = new XMLHttpRequest();
+  x.open('GET', 'https://papi.gaitame.com/v1/quotes/all', true);
+  x.timeout = 6000;
+  x.onreadystatechange = function() {
+    if (x.readyState === 4) {
+      if (x.status === 200) {
+        try {
+          var d = JSON.parse(x.responseText);
+          var v = null;
+          if (d && d.usdjpy) { v = d.usdjpy.ask || d.usdjpy.bid; }
+          if (!v && d && d.USDJPY) { v = d.USDJPY.ask || d.USDJPY.bid; }
+          if (!v && Array.isArray(d)) {
+            for (var i = 0; i < d.length; i++) {
+              if (d[i].currencyPair === 'USDJPY' || d[i].symbol === 'USDJPY') {
+                v = d[i].ask || d[i].bid; break;
+              }
+            }
+          }
+          if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+        } catch(e) {}
+      }
+      fetchRateA(cb);
+    }
+  };
+  x.ontimeout = function() { fetchRateA(cb); };
+  x.onerror   = function() { fetchRateA(cb); };
+  x.send();
+}
+
+function fetchRateA(cb) {
+  var done = false, cbName = 'fxa' + Date.now(), el = null;
+  var tid = setTimeout(function() {
+    if (done) { return; } done = true;
+    window[cbName] = null;
+    if (el && el.parentNode) { el.parentNode.removeChild(el); }
+    fetchRateB(cb);
+  }, 8000);
+  window[cbName] = function(data) {
+    if (done) { return; } done = true;
+    clearTimeout(tid); window[cbName] = null;
+    if (el && el.parentNode) { el.parentNode.removeChild(el); }
+    try {
+      var v = data && data.rates && data.rates.JPY;
+      if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+    } catch(e) {}
+    fetchRateB(cb);
+  };
+  el = document.createElement('script');
+  el.src = 'https://api.exchangerate-api.com/v4/latest/USD?callback=' + cbName;
+  el.onerror = function() {
+    if (done) { return; } done = true;
+    clearTimeout(tid); window[cbName] = null; fetchRateB(cb);
+  };
+  document.head.appendChild(el);
+}
+
+function fetchRateB(cb) {
+  var done = false, cbName = 'fxb' + Date.now(), el = null;
+  var tid = setTimeout(function() {
+    if (done) { return; } done = true;
+    window[cbName] = null;
+    if (el && el.parentNode) { el.parentNode.removeChild(el); }
+    fetchRateC(cb);
+  }, 8000);
+  window[cbName] = function(data) {
+    if (done) { return; } done = true;
+    clearTimeout(tid); window[cbName] = null;
+    if (el && el.parentNode) { el.parentNode.removeChild(el); }
+    try {
+      var v = data && data.rates && data.rates.JPY;
+      if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+    } catch(e) {}
+    fetchRateC(cb);
+  };
+  el = document.createElement('script');
+  el.src = 'https://open.er-api.com/v6/latest/USD?callback=' + cbName;
+  el.onerror = function() {
+    if (done) { return; } done = true;
+    clearTimeout(tid); window[cbName] = null; fetchRateC(cb);
+  };
+  document.head.appendChild(el);
+}
+
+function fetchRateC(cb) {
+  var x = new XMLHttpRequest();
+  x.open('GET', 'https://api.frankfurter.app/latest?from=USD&to=JPY', true);
+  x.timeout = 8000;
+  x.onreadystatechange = function() {
+    if (x.readyState === 4) {
+      if (x.status === 200) {
+        try {
+          var d = JSON.parse(x.responseText);
+          var v = d.rates && d.rates.JPY;
+          if (v && v > 50 && v < 300) { cb(null, parseFloat(v)); return; }
+        } catch(e) {}
+      }
+      cb('全API失敗', null);
+    }
+  };
+  x.ontimeout = function() { cb('タイムアウト', null); };
+  x.onerror   = function() { cb('ネットワークエラー', null); };
+  x.send();
+}
+
+
+function addTick(rate) {
+  var prev = rawC.length ? rawC[rawC.length-1] : null;
+  var o = prev ? prev.c : rate;
+  var noise = 0.01;
+  var h = Math.max(o, rate) + Math.random() * noise;
+  var l = Math.min(o, rate) - Math.random() * noise;
+  rawC.push({o:o, h:h, l:l, c:rate});
+  haC = [];
+  for (var i = 0; i < rawC.length; i++) {
+    var raw = rawC[i];
+    var hac = (raw.o + raw.h + raw.l + raw.c) / 4;
+    var hao = i === 0 ? (raw.o + raw.c) / 2 : (haC[i-1].o + haC[i-1].c) / 2;
+    var hah = Math.max(raw.h, hao, hac);
+    var hal = Math.min(raw.l, hao, hac);
+    haC.push({o:hao, h:hah, l:hal, c:hac});
+  }
+}
+
+function getSignal() {
+  var n = parseInt(document.getElementById('hacount').value) || 3;
+  if (haC.length < n) { return null; }
+  var slice = haC.slice(-n);
+  var bull = true, bear = true;
+  for (var i = 0; i < slice.length; i++) {
+    if (slice[i].c <= slice[i].o) { bull = false; }
+    if (slice[i].c >= slice[i].o) { bear = false; }
+  }
+  if (bull) { return 'bull'; }
+  if (bear) { return 'bear'; }
+  return 'neutral';
+}
+
+function doFetch() {
+  clearErr();
+  fetchRate(function(err, rate) {
+    if (err || rate === null) {
+      showErr('取得失敗: ' + (err || 'null'));
+      return;
+    }
+    var prev = lastRate;
+    addTick(rate);
+    updateDisplay(rate, prev);
+    updateHA();
+    addLog(rate, prev);
+    lastRate = rate;
+    speakAll(rate, prev);
+  });
+}
+
+function doOnce() { initSpeech(); doFetch(); }
+
+function updateDisplay(rate, prev) {
+  var card = document.getElementById('rcard');
+  var el   = document.getElementById('rnum');
+  var bc   = document.getElementById('bchg');
+  var bs   = document.getElementById('bsrg');
+  var s = rate.toFixed(3).split('.');
+  el.innerHTML = s[0] + '<span class="rdec">.' + s[1] + '</span>';
+  el.className = 'rnum';
+  card.className = 'rcard';
+  if (prev !== null) {
+    var diff = rate - prev;
+    var sign = diff >= 0 ? '+' : '';
+    var arrow = diff > 0.001 ? '↑' : diff < -0.001 ? '↓' : '→';
+    bc.textContent = arrow + ' ' + sign + diff.toFixed(3) + ' 円';
+    var cls = diff > 0.001 ? 'up' : diff < -0.001 ? 'dn' : 'nc';
+    bc.className = 'badge bchg ' + cls + ' show';
+    if (diff > 0.001) { card.className = 'rcard bull'; }
+    else if (diff < -0.001) { el.className = 'rnum bear'; card.className = 'rcard bear'; }
+    var thr = parseFloat(document.getElementById('thresh').value) || 0.03;
+    if (Math.abs(diff) >= thr) {
+      bs.textContent = diff > 0 ? '急騰！' : '急落！';
+      bs.className = 'badge bsrg show';
+      setTimeout(function() { bs.className = 'badge bsrg'; }, 8000);
+    }
+  }
+}
+
+function updateHA() {
+  var sig = getSignal();
+  var el = document.getElementById('hav');
+  var n  = parseInt(document.getElementById('hacount').value) || 3;
+  var have = Math.min(haC.length, n);
+  if (sig === 'bull') { el.textContent = '▲ 陽線（上昇）' + have + '本連続'; el.className = 'ha-v bull'; }
+  else if (sig === 'bear') { el.textContent = '▼ 陰線（下降）' + have + '本連続'; el.className = 'ha-v bear'; }
+  else if (sig === 'neutral') { el.textContent = '━ 中立'; el.className = 'ha-v'; }
+  else { el.textContent = 'データ収集中 ' + haC.length + '/' + n + '本'; el.className = 'ha-v'; }
+}
+
+function initSpeech() {
+  if (spReady || !window.speechSynthesis) { return; }
+  var u = new SpeechSynthesisUtterance('');
+  u.volume = 0; u.lang = 'ja-JP';
+  window.speechSynthesis.speak(u);
+  spReady = true;
+  document.getElementById('note').style.display = 'none';
+}
+
+function speak(text) {
+  if (!window.speechSynthesis) { return; }
+  window.speechSynthesis.cancel();
+  var u = new SpeechSynthesisUtterance(text);
+  u.lang = 'ja-JP'; u.rate = 0.85; u.pitch = 1.0; u.volume = 1.0;
+  var bar = document.getElementById('sbar');
+  u.onstart = function() { bar.className = 'sbar on'; };
+  u.onend   = function() { bar.className = 'sbar'; };
+  u.onerror = function() { bar.className = 'sbar'; };
+  window.speechSynthesis.resume();
+  window.speechSynthesis.speak(u);
+  var kick = setInterval(function() {
+    if (!window.speechSynthesis.speaking) { clearInterval(kick); return; }
+    window.speechSynthesis.pause();
+    window.speechSynthesis.resume();
+  }, 5000);
+}
+
+function speakAll(rate, prev) {
+  var thr = parseFloat(document.getElementById('thresh').value) || 0.03;
+  var prefix = '';
+  if (prev !== null) {
+    var diff = rate - prev;
+    if (diff >= thr)       { prefix = '急騰です。'; }
+    else if (diff <= -thr) { prefix = '急落です。'; }
+  }
+  var sig = getSignal();
+  var suffix = '';
+  if      (sig === 'bull') { suffix = '。平均足は陽線です'; }
+  else if (sig === 'bear') { suffix = '。平均足は陰線です'; }
+  speak(prefix + rateText(rate) + suffix);
+}
+
+function toggleAuto() {
+  initSpeech();
+  if (running) { stopAuto(); } else { startAuto(); }
+}
+
+function startAuto() {
+  running = true;
+  document.getElementById('bmain').textContent = '■ 自動読み上げ 停止';
+  document.getElementById('bmain').className = 'bmain active';
+  document.getElementById('tst').textContent = '10秒ごとに更新中';
+  doFetch(); schedNext();
+}
+
+function stopAuto() {
+  running = false;
+  clearTimeout(nextTmr); clearInterval(cntTmr);
+  document.getElementById('bmain').textContent = '▶ 自動読み上げ 開始';
+  document.getElementById('bmain').className = 'bmain';
+  document.getElementById('tst').textContent = '停止中';
+  resetRing();
+}
+
+function schedNext() {
+  clearTimeout(nextTmr); clearInterval(cntTmr);
+  cd = 10; updateRing();
+  cntTmr = setInterval(function() {
+    cd--; updateRing();
+    if (cd <= 0) { clearInterval(cntTmr); }
+  }, 1000);
+  nextTmr = setTimeout(function() {
+    if (running) { doFetch(); schedNext(); }
+  }, 10000);
+}
+
+function updateRing() {
+  var p = document.getElementById('rprg');
+  var n = document.getElementById('rn');
+  n.textContent = cd;
+  p.style.strokeDashoffset = CIRC * (1 - cd / 10);
+  var hot = cd <= 3;
+  p.style.stroke = hot ? 'var(--red)' : 'var(--green)';
+  n.style.color  = hot ? 'var(--red)' : 'var(--green)';
+}
+
+function resetRing() {
+  var p = document.getElementById('rprg');
+  var n = document.getElementById('rn');
+  n.textContent = '10'; n.style.color = 'var(--green)';
+  p.style.strokeDashoffset = 0; p.style.stroke = 'var(--green)';
+}
+
+function addLog(rate, prev) {
+  var list = document.getElementById('llist');
+  if (list.children.length === 1 && list.children[0].style.justifyContent === 'center') {
+    list.innerHTML = '';
+  }
+  while (list.children.length >= 12) { list.removeChild(list.lastChild); }
+  var now = new Date().toLocaleTimeString('ja-JP', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  var cls = 'nc', dstr = '';
+  if (prev !== null) {
+    var d = rate - prev;
+    dstr = (d >= 0 ? '+' : '') + d.toFixed(3);
+    cls = d > 0.001 ? 'up' : d < -0.001 ? 'dn' : 'nc';
+  }
+  var dcol = cls === 'up' ? 'var(--green)' : cls === 'dn' ? 'var(--red)' : 'var(--dim)';
+  var item = document.createElement('div');
+  item.className = 'litem';
+  item.innerHTML =
+    '<span class="ltm">' + now + '</span>' +
+    '<span class="lrt ' + cls + '">' + rate.toFixed(3) + '</span>' +
+    '<span class="ldf" style="color:' + dcol + '">' + dstr + '</span>';
+  list.insertBefore(item, list.firstChild);
+}
+
+function toggleSettings() {
+  var b = document.getElementById('sbody');
+  var a = document.getElementById('sarr');
+  if (b.className === 'sbody hid') { b.className = 'sbody'; a.textContent = '▲'; }
+  else { b.className = 'sbody hid'; a.textContent = '▼'; }
+}
+
+document.getElementById('shdr').addEventListener('click', toggleSettings);
+function showErr(m) { document.getElementById('errmsg').textContent = m; }
+function clearErr()  { document.getElementById('errmsg').textContent = ''; }
 </script>
 </body>
 </html>
